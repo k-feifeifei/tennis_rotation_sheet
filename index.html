@@ -453,32 +453,27 @@
           }
 
           for (let round = 0; round < maxRounds; round++) {
-            const roundMatches = [];
             const usedInRound = new Set();
 
-            // このラウンドで可能な限り試合を作成
-            for (let court = 0; court < this.courtCount; court++) {
-              const match = this.findBestDoublesMatch(playerCount, usedInRound);
-              if (match) {
-                roundMatches.push(match);
-                usedInRound.add(match.t1p1);
-                usedInRound.add(match.t1p2);
-                usedInRound.add(match.t2p1);
-                usedInRound.add(match.t2p2);
+            // 汎用ロジック：主役プレイヤー→対戦主役プレイヤー→ペアプレイヤーの順で選択
+            const roundMatches = this.findBestMatchesForRound(
+              playerCount,
+              usedInRound
+            );
 
-                // 統計更新
+            // 統計更新
+            if (roundMatches.length > 0) {
+              roundMatches.forEach((match) => {
                 this.playCount[match.t1p1]++;
                 this.playCount[match.t1p2]++;
                 this.playCount[match.t2p1]++;
                 this.playCount[match.t2p2]++;
 
-                // ペア履歴更新
                 this.partnerHistory[match.t1p1][match.t1p2]++;
                 this.partnerHistory[match.t1p2][match.t1p1]++;
                 this.partnerHistory[match.t2p1][match.t2p2]++;
                 this.partnerHistory[match.t2p2][match.t2p1]++;
 
-                // 対戦履歴更新
                 this.matchHistory[match.t1p1][match.t2p1]++;
                 this.matchHistory[match.t1p1][match.t2p2]++;
                 this.matchHistory[match.t1p2][match.t2p1]++;
@@ -487,7 +482,7 @@
                 this.matchHistory[match.t2p1][match.t1p2]++;
                 this.matchHistory[match.t2p2][match.t1p1]++;
                 this.matchHistory[match.t2p2][match.t1p2]++;
-              }
+              });
             }
 
             if (roundMatches.length > 0) {
@@ -648,6 +643,301 @@
           }
 
           return bestMatch;
+        }
+
+        // 汎用ロジック：ラウンド全体の最適なマッチを生成
+        findBestMatchesForRound(playerCount, usedInRound) {
+          console.log("\n=== ラウンド生成開始 ===");
+          const matches = [];
+
+          // 利用可能なプレイヤーを出場回数の少ない順にソート
+          const availablePlayers = Array.from(
+            { length: playerCount },
+            (_, i) => i
+          )
+            .filter((i) => !usedInRound.has(i))
+            .sort((a, b) => this.playCount[a] - this.playCount[b]);
+
+          console.log(
+            "利用可能プレイヤー:",
+            availablePlayers
+              .map((p) => `${this.players[p]}(出場:${this.playCount[p]})`)
+              .join(", ")
+          );
+
+          if (availablePlayers.length < this.courtCount * 4) {
+            console.log("プレイヤー不足で終了");
+            return matches;
+          }
+
+          // ステップ1: 各コートの主役プレイヤーを選択（出場回数が少ない順）
+          const leadPlayers = [];
+          for (let i = 0; i < this.courtCount; i++) {
+            leadPlayers.push(availablePlayers[i]);
+            usedInRound.add(availablePlayers[i]);
+          }
+          console.log(
+            "主役プレイヤー:",
+            leadPlayers.map((p) => this.players[p]).join(", ")
+          );
+
+          // ステップ2: 主役プレイヤーの対戦相手となる主役プレイヤーを選択
+          const opponentLeadPlayers = [];
+          console.log("\n対戦主役プレイヤー選択:");
+          for (let i = 0; i < this.courtCount; i++) {
+            let bestOpponent = null;
+            let bestScore = -Infinity;
+
+            for (const candidate of availablePlayers) {
+              if (usedInRound.has(candidate)) continue;
+
+              // この候補者と全主役プレイヤーとの対戦履歴とペア履歴の合計を計算
+              let matchScore = 0;
+              let partnerScore = 0;
+              for (const lead of leadPlayers) {
+                matchScore -= this.matchHistory[lead][candidate];
+                partnerScore -= this.partnerHistory[lead][candidate];
+              }
+
+              const score = matchScore + partnerScore * 50 - candidate * 0.01;
+
+              if (score > bestScore) {
+                bestScore = score;
+                bestOpponent = candidate;
+              }
+            }
+
+            if (bestOpponent !== null) {
+              console.log(
+                `  コート${i + 1}: ${
+                  this.players[bestOpponent]
+                } (対戦スコア: ${bestScore})`
+              );
+              opponentLeadPlayers.push(bestOpponent);
+              usedInRound.add(bestOpponent);
+            }
+          }
+
+          // ステップ3: 各コートのマッチを作成
+          console.log("\nマッチ作成:");
+          for (let court = 0; court < this.courtCount; court++) {
+            console.log(`\n--- コート${court + 1} ---`);
+            if (
+              court >= leadPlayers.length ||
+              court >= opponentLeadPlayers.length
+            ) {
+              console.log("主役プレイヤー不足");
+              break;
+            }
+
+            const lead1 = leadPlayers[court];
+            const lead2 = opponentLeadPlayers[court];
+            console.log(
+              `主役: ${this.players[lead1]} vs ${this.players[lead2]}`
+            );
+
+            // lead1の1人目のペア候補を選択
+            let lead1Candidates = [];
+            for (const candidate of availablePlayers) {
+              if (usedInRound.has(candidate)) continue;
+
+              const partnerScore = -this.partnerHistory[lead1][candidate] * 50;
+              const matchScore = -this.matchHistory[lead1][candidate] * 5;
+              const playScore = -this.playCount[candidate] * 10;
+              const playerNumberScore = -candidate * 0.01;
+              const score =
+                partnerScore + matchScore + playScore + playerNumberScore;
+
+              lead1Candidates.push({ player: candidate, score });
+            }
+            lead1Candidates.sort((a, b) => b.score - a.score);
+
+            if (lead1Candidates.length < 1) {
+              console.log("ペアプレイヤーが不足");
+              continue;
+            }
+
+            const lead1Partner1 = lead1Candidates[0].player;
+            console.log(
+              `${this.players[lead1]}の1人目ペア候補: ${this.players[lead1Partner1]}`
+            );
+            usedInRound.add(lead1Partner1);
+
+            // lead2の1人目のペア候補を選択
+            let lead2Candidates = [];
+            for (const candidate of availablePlayers) {
+              if (usedInRound.has(candidate)) continue;
+
+              const partnerScore = -this.partnerHistory[lead2][candidate] * 50;
+              const matchScore = -this.matchHistory[lead2][candidate] * 5;
+              const playScore = -this.playCount[candidate] * 10;
+              const playerNumberScore = -candidate * 0.01;
+              const score =
+                partnerScore + matchScore + playScore + playerNumberScore;
+
+              lead2Candidates.push({ player: candidate, score });
+            }
+            lead2Candidates.sort((a, b) => b.score - a.score);
+
+            if (lead2Candidates.length < 1) {
+              console.log("lead2の1人目ペアプレイヤーが不足");
+              usedInRound.delete(lead1Partner1);
+              continue;
+            }
+
+            const lead2Partner1 = lead2Candidates[0].player;
+            console.log(
+              `${this.players[lead2]}の1人目ペア候補: ${this.players[lead2Partner1]}`
+            );
+            usedInRound.add(lead2Partner1);
+
+            // lead1の2人目のペア候補を選択
+            lead1Candidates = [];
+            for (const candidate of availablePlayers) {
+              if (usedInRound.has(candidate)) continue;
+
+              const partnerScore = -this.partnerHistory[lead1][candidate] * 50;
+              const matchScore = -this.matchHistory[lead1][candidate] * 5;
+              const playScore = -this.playCount[candidate] * 10;
+              const playerNumberScore = -candidate * 0.01;
+              const score =
+                partnerScore + matchScore + playScore + playerNumberScore;
+
+              lead1Candidates.push({ player: candidate, score });
+            }
+            lead1Candidates.sort((a, b) => b.score - a.score);
+
+            if (lead1Candidates.length < 1) {
+              console.log("lead1の2人目ペアプレイヤーが不足");
+              usedInRound.delete(lead1Partner1);
+              usedInRound.delete(lead2Partner1);
+              continue;
+            }
+
+            const lead1Partner2 = lead1Candidates[0].player;
+            console.log(
+              `${this.players[lead1]}の2人目ペア候補: ${this.players[lead1Partner2]}`
+            );
+            usedInRound.add(lead1Partner2);
+
+            // lead2の2人目のペア候補を選択
+            lead2Candidates = [];
+            for (const candidate of availablePlayers) {
+              if (usedInRound.has(candidate)) continue;
+
+              const partnerScore = -this.partnerHistory[lead2][candidate] * 50;
+              const matchScore = -this.matchHistory[lead2][candidate] * 5;
+              const playScore = -this.playCount[candidate] * 10;
+              const playerNumberScore = -candidate * 0.01;
+              const score =
+                partnerScore + matchScore + playScore + playerNumberScore;
+
+              lead2Candidates.push({ player: candidate, score });
+            }
+            lead2Candidates.sort((a, b) => b.score - a.score);
+
+            if (lead2Candidates.length < 1) {
+              console.log("lead2の2人目ペアプレイヤーが不足");
+              usedInRound.delete(lead1Partner1);
+              usedInRound.delete(lead2Partner1);
+              usedInRound.delete(lead1Partner2);
+              continue;
+            }
+
+            const lead2Partner2 = lead2Candidates[0].player;
+            console.log(
+              `${this.players[lead2]}の2人目ペア候補: ${this.players[lead2Partner2]}`
+            );
+            usedInRound.add(lead2Partner2);
+
+            // 4パターンの組み合わせを評価
+            const patterns = [
+              {
+                t1p1: lead1,
+                t1p2: lead1Partner1,
+                t2p1: lead2,
+                t2p2: lead2Partner1,
+              },
+              {
+                t1p1: lead1,
+                t1p2: lead1Partner1,
+                t2p1: lead2,
+                t2p2: lead2Partner2,
+              },
+              {
+                t1p1: lead1,
+                t1p2: lead1Partner2,
+                t2p1: lead2,
+                t2p2: lead2Partner1,
+              },
+              {
+                t1p1: lead1,
+                t1p2: lead1Partner2,
+                t2p1: lead2,
+                t2p2: lead2Partner2,
+              },
+            ];
+
+            let bestMatch = null;
+            let bestMatchScore = -Infinity;
+            console.log("\nペアパターン評価 (4パターン):");
+
+            for (const pattern of patterns) {
+              const { t1p1, t1p2, t2p1, t2p2 } = pattern;
+
+              const partnerScore =
+                -(
+                  this.partnerHistory[t1p1][t1p2] +
+                  this.partnerHistory[t2p1][t2p2]
+                ) * 50;
+              const matchScore =
+                -(
+                  this.matchHistory[t1p1][t2p1] +
+                  this.matchHistory[t1p1][t2p2] +
+                  this.matchHistory[t1p2][t2p1] +
+                  this.matchHistory[t1p2][t2p2]
+                ) * 10;
+
+              const score = partnerScore + matchScore;
+              console.log(
+                `  (${this.players[t1p1]},${this.players[t1p2]}) vs (${this.players[t2p1]},${this.players[t2p2]}): スコア=${score}`
+              );
+
+              if (score > bestMatchScore) {
+                bestMatchScore = score;
+                bestMatch = pattern;
+              }
+            }
+
+            if (bestMatch) {
+              console.log(
+                `最終選択: (${this.players[bestMatch.t1p1]},${
+                  this.players[bestMatch.t1p2]
+                }) vs (${this.players[bestMatch.t2p1]},${
+                  this.players[bestMatch.t2p2]
+                })`
+              );
+
+              // 使用されなかった候補をusedInRoundから削除
+              const usedPartners = [bestMatch.t1p2, bestMatch.t2p2];
+              const allPartners = [
+                lead1Partner1,
+                lead1Partner2,
+                lead2Partner1,
+                lead2Partner2,
+              ];
+              for (const partner of allPartners) {
+                if (!usedPartners.includes(partner)) {
+                  usedInRound.delete(partner);
+                }
+              }
+
+              matches.push(bestMatch);
+            }
+          }
+
+          console.log("\n=== ラウンド生成完了 ===\n");
+          return matches;
         }
 
         splitIntoCourts(matches) {
