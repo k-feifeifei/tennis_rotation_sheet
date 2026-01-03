@@ -588,49 +588,59 @@
 
           if (availablePlayers.length < 4) return null;
 
-          // チーム1のペアを探す（出場回数が少なく、ペア回数が少ない組み合わせ）
+          // 4人のプレイヤーの全組み合わせを試す
           for (let i = 0; i < availablePlayers.length - 3; i++) {
             for (let j = i + 1; j < availablePlayers.length - 2; j++) {
-              const t1p1 = availablePlayers[i];
-              const t1p2 = availablePlayers[j];
-
-              // チーム2のペアを探す
               for (let k = j + 1; k < availablePlayers.length - 1; k++) {
                 for (let l = k + 1; l < availablePlayers.length; l++) {
-                  const t2p1 = availablePlayers[k];
-                  const t2p2 = availablePlayers[l];
+                  const p1 = availablePlayers[i];
+                  const p2 = availablePlayers[j];
+                  const p3 = availablePlayers[k];
+                  const p4 = availablePlayers[l];
 
-                  // スコア計算
-                  // 1. 出場回数が少ないほど高スコア
-                  const playScore =
-                    -(
-                      this.playCount[t1p1] +
-                      this.playCount[t1p2] +
-                      this.playCount[t2p1] +
-                      this.playCount[t2p2]
-                    ) * 100;
+                  // 4人が決まったら、3通りのペア組み合わせパターンを評価
+                  const patterns = [
+                    { t1p1: p1, t1p2: p2, t2p1: p3, t2p2: p4 }, // (1,2) vs (3,4)
+                    { t1p1: p1, t1p2: p3, t2p1: p2, t2p2: p4 }, // (1,3) vs (2,4)
+                    { t1p1: p1, t1p2: p4, t2p1: p2, t2p2: p3 }, // (1,4) vs (2,3)
+                  ];
 
-                  // 2. ペア回数が少ないほど高スコア
-                  const partnerScore =
-                    -(
-                      this.partnerHistory[t1p1][t1p2] +
-                      this.partnerHistory[t2p1][t2p2]
-                    ) * 50;
+                  // 各パターンのスコアを計算し、最適なパターンを選択
+                  for (const pattern of patterns) {
+                    const { t1p1, t1p2, t2p1, t2p2 } = pattern;
 
-                  // 3. 対戦回数が少ないほど高スコア
-                  const matchScore =
-                    -(
-                      this.matchHistory[t1p1][t2p1] +
-                      this.matchHistory[t1p1][t2p2] +
-                      this.matchHistory[t1p2][t2p1] +
-                      this.matchHistory[t1p2][t2p2]
-                    ) * 10;
+                    // スコア計算
+                    // 1. 出場回数が少ないほど高スコア
+                    const playScore =
+                      -(
+                        this.playCount[t1p1] +
+                        this.playCount[t1p2] +
+                        this.playCount[t2p1] +
+                        this.playCount[t2p2]
+                      ) * 100;
 
-                  const score = playScore + partnerScore + matchScore;
+                    // 2. ペア回数が少ないほど高スコア（最も重要）
+                    const partnerScore =
+                      -(
+                        this.partnerHistory[t1p1][t1p2] +
+                        this.partnerHistory[t2p1][t2p2]
+                      ) * 50;
 
-                  if (score > bestScore) {
-                    bestScore = score;
-                    bestMatch = { t1p1, t1p2, t2p1, t2p2 };
+                    // 3. 対戦回数が少ないほど高スコア
+                    const matchScore =
+                      -(
+                        this.matchHistory[t1p1][t2p1] +
+                        this.matchHistory[t1p1][t2p2] +
+                        this.matchHistory[t1p2][t2p1] +
+                        this.matchHistory[t1p2][t2p2]
+                      ) * 10;
+
+                    const score = playScore + partnerScore + matchScore;
+
+                    if (score > bestScore) {
+                      bestScore = score;
+                      bestMatch = { t1p1, t1p2, t2p1, t2p2 };
+                    }
                   }
                 }
               }
