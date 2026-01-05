@@ -309,8 +309,8 @@
               <label for="courtCount">コート数</label>
               <select id="courtCount" required>
                 <option value="">選択してください</option>
-                <option value="1">1面</option>
-                <option value="2" selected>2面</option>
+                <option value="1" selected>1面</option>
+                <option value="2">2面</option>
                 <option value="3">3面</option>
                 <option value="4">4面</option>
                 <option value="5">5面</option>
@@ -330,11 +330,11 @@
             <div class="form-group">
               <label for="roundCount">ラウンド数</label>
               <select id="roundCount" required>
-                <option value="5" selected>5ラウンド</option>
+                <option value="5">5ラウンド</option>
                 <option value="10">10ラウンド</option>
                 <option value="15">15ラウンド</option>
                 <option value="20">20ラウンド</option>
-                <option value="25">25ラウンド</option>
+                <option value="25" selected>25ラウンド</option>
                 <option value="30">30ラウンド</option>
                 <option value="35">35ラウンド</option>
                 <option value="40">40ラウンド</option>
@@ -2123,8 +2123,8 @@
 
           // デフォルト値を設定（ダブルス、6人、1コート）
           setTimeout(() => {
-            if (this.playerCountSelect.querySelector('option[value="10"]')) {
-              this.playerCountSelect.value = "10";
+            if (this.playerCountSelect.querySelector('option[value="6"]')) {
+              this.playerCountSelect.value = "6";
             }
           }, 0);
         }
