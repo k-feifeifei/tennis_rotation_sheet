@@ -285,22 +285,58 @@
       </div>
 
       <div class="form-section">
-        <div class="error-message" id="errorMessage"></div>
-
         <form id="rotationForm">
           <div class="form-group">
             <label for="title">大会名称（任意）</label>
             <input type="text" id="title" placeholder="例: 第1回テニス大会" />
           </div>
 
-          <input type="hidden" name="matchType" value="doubles" />
-          <div class="form-group">
-            <label>試合形式</label>
-            <div class="radio-group">
-              <label>
-                <input type="radio" name="matchType" value="doubles" checked />
-                ダブルス
-              </label>
+          <div class="form-row">
+            <input type="hidden" name="matchType" value="doubles" />
+            <div class="form-group">
+              <label>試合形式</label>
+              <div class="radio-group">
+                <label>
+                  <input
+                    type="radio"
+                    name="matchFormat"
+                    value="doubles"
+                    checked
+                  />
+                  ダブルス
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="matchFormat"
+                    value="doubles-mixed"
+                  />
+                  ダブルス(ミックス優先)
+                </label>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="matchSubType">対戦方式</label>
+              <select id="matchSubType" required>
+                <option value="balanced" selected>バランス型（推奨）</option>
+                <option value="diversity">多様性優先型</option>
+                <option value="fairness">公平性重視型</option>
+                <option value="mixed" style="display: none" id="mixedOption">
+                  男女混合重視型（推奨）
+                </option>
+                <option value="consecutive">連続性極限型</option>
+              </select>
+              <div class="form-help">
+                ※各方式の説明：
+                <br />バランス型：公平性と多様性のバランス（推奨）
+                <br />多様性優先型：毎回異なるマッチングを重視
+                <br />公平性重視型：出場機会の均等性を優先
+                <span id="mixedExplanation" style="display: none">
+                  <br />男女混合重視型：男女混合ペアを優先
+                </span>
+                <br />連続性極限型：同じペアの繰り返しを極力避ける
+              </div>
             </div>
           </div>
 
@@ -375,7 +411,7 @@
                 id="randomBtn"
                 style="padding: 8px 15px; font-size: 14px; flex: 1"
               >
-                🎲 ランダム順にする
+                🎲 ランダム順
               </button>
             </div>
             <div class="form-help" style="margin-top: 10px">
@@ -385,6 +421,81 @@
               田中太郎」のように番号付きで表示されます。未入力の場合は番号（1、2、3...）のみ表示されます。
             </div>
           </div>
+
+          <div
+            class="form-group"
+            id="genderCheckboxGroup"
+            style="display: none"
+          >
+            <label>性別選択（ミックス優先モード）</label>
+            <div
+              style="
+                margin-bottom: 10px;
+                display: flex;
+                gap: 10px;
+                flex-wrap: wrap;
+              "
+            >
+              <button
+                type="button"
+                onclick="uiController.setAllMale()"
+                style="
+                  padding: 8px 12px;
+                  background: #e3f2fd;
+                  border: 1px solid #90caf9;
+                  border-radius: 4px;
+                  cursor: pointer;
+                  font-weight: 500;
+                "
+              >
+                👨 男性のみ
+              </button>
+              <button
+                type="button"
+                onclick="uiController.setAllFemale()"
+                style="
+                  padding: 8px 12px;
+                  background: #ffeef5;
+                  border: 1px solid #ffb6d9;
+                  border-radius: 4px;
+                  cursor: pointer;
+                  font-weight: 500;
+                "
+              >
+                👩 女性のみ
+              </button>
+              <button
+                type="button"
+                onclick="uiController.setAlternateGender()"
+                style="
+                  padding: 8px 12px;
+                  background: #f5f5f5;
+                  border: 1px solid #cccccc;
+                  border-radius: 4px;
+                  cursor: pointer;
+                  font-weight: 500;
+                "
+              >
+                🔄 交互
+              </button>
+            </div>
+            <div
+              id="genderCheckboxes"
+              style="
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                gap: 10px;
+                margin-top: 10px;
+              "
+            >
+              <!-- チェックボックスが動的に生成されます -->
+            </div>
+            <div class="form-help" style="margin-top: 10px">
+              ※各参加者の性別を選択してください。ミックス優先モードでは男女ペアが優先されます。
+            </div>
+          </div>
+
+          <div class="error-message" id="errorMessage"></div>
 
           <button type="submit" class="btn" id="generateBtn">
             ローテーション表を生成
@@ -403,6 +514,8 @@
           <button class="btn btn-secondary" id="newBtnTop">新規作成</button>
           <button class="btn" id="downloadBtnTop">画像を保存</button>
         </div>
+        <!-- デバッグ用テーブル形式対戦表 -->
+        <div id="debugTableContainer" style="margin-bottom: 20px"></div>
         <div class="canvas-container">
           <canvas id="rotationCanvas"></canvas>
         </div>
@@ -415,15 +528,156 @@
 
     <script>
       // ==========================================
+      // ユーティリティ関数（URLパラメータ）
+      // ==========================================
+      /**
+       * URLパラメータを取得
+       */
+      function getUrlParameter(param) {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get(param);
+      }
+
+      /**
+       * デバッグモードが有効か判定
+       */
+      function isDebugMode() {
+        return getUrlParameter("debug") === "true";
+      }
+
+      // ==========================================
       // 定数定義
       // ==========================================
       const SCORING_WEIGHTS = {
-        PLAY_COUNT_SORT: 100, // 主役選択時のソート用
-        PARTNER_HISTORY: 50, // ペア履歴の重み
-        MATCH_HISTORY_PATTERN: 10, // パターン評価時の対戦履歴
-        MATCH_HISTORY_SELECT: 5, // 候補選択時の対戦履歴
-        PLAY_COUNT_SELECT: 10, // 候補選択時の出場回数
+        // ========== L1: 1人評価（主役選択） ==========
+        PLAY_COUNT_SORT: 100, // 出場回数の重み
+        LEAD_PLAYER_COUNT: 50, // 主役回数の重み
+        CONSECUTIVE_REST: 10, // 連続待機数の重み（マイナス）
+
+        // ========== L2: 2人評価（主役vs対手選択） ==========
+        MATCH_HISTORY_SELECT: 100, // 対戦履歴の重み
+        PLAY_COUNT_SELECT: 50, // 出場回数の重み
+        PARTNER_HISTORY: 10, // ペア履歴の重み
+        CONSECUTIVE_MATCH_OPPONENT: 25, // 連続対戦の重み
+        CONSECUTIVE_PARTNER_OPPONENT: 15, // 連続队友の重み
         PLAYER_NUMBER: 0.01, // タイブレーカー
+
+        // ========== L3: 3人評価（主役vs対手+队友選択） ==========
+        TRIPLET_PARTNER_HISTORY: 50, // 主役とペアの搭档履歴
+        TRIPLET_OPPONENT_HISTORY: 30, // ペアと対手の対戦履歴
+        TRIPLET_LEAD_HISTORY: 20, // 主役と対手の対戦履歴
+        TRIPLET_CONSECUTIVE_MATCH: 20, // 連続対戦の重み
+        TRIPLET_CONSECUTIVE_PARTNER: 15, // 連続队友の重み
+
+        // ========== L4: 4人評価（最終組合パターン） ==========
+        MATCH_HISTORY_PATTERN: 50, // 4人間の対戦履歴の重み
+        MIXED_BONUS: 100, // 男女混合ペアのボーナス
+        PATTERN_CONSECUTIVE_MATCH: 20, // 連続対戦の重み
+        PATTERN_CONSECUTIVE_PARTNER: 15, // 連続队友の重み
+      };
+
+      // ========== 対戦方式別の最適な重み設定 ==========
+      const SCORING_WEIGHTS_PRESETS = {
+        // バランス型（推奨）
+        balanced: {
+          PLAY_COUNT_SORT: 120,
+          LEAD_PLAYER_COUNT: 60,
+          CONSECUTIVE_REST: 15,
+          MATCH_HISTORY_SELECT: 100,
+          PLAY_COUNT_SELECT: 50,
+          PARTNER_HISTORY: 15,
+          CONSECUTIVE_MATCH_OPPONENT: 25,
+          CONSECUTIVE_PARTNER_OPPONENT: 15,
+          TRIPLET_PARTNER_HISTORY: 50,
+          TRIPLET_OPPONENT_HISTORY: 30,
+          TRIPLET_LEAD_HISTORY: 20,
+          TRIPLET_CONSECUTIVE_MATCH: 25,
+          TRIPLET_CONSECUTIVE_PARTNER: 15,
+          MATCH_HISTORY_PATTERN: 50,
+          MIXED_BONUS: 120,
+          PATTERN_CONSECUTIVE_MATCH: 25,
+          PATTERN_CONSECUTIVE_PARTNER: 15,
+        },
+        // 多様性優先型
+        diversity: {
+          PLAY_COUNT_SORT: 100,
+          LEAD_PLAYER_COUNT: 50,
+          CONSECUTIVE_REST: 10,
+          MATCH_HISTORY_SELECT: 150,
+          PLAY_COUNT_SELECT: 40,
+          PARTNER_HISTORY: 25,
+          CONSECUTIVE_MATCH_OPPONENT: 40,
+          CONSECUTIVE_PARTNER_OPPONENT: 25,
+          TRIPLET_PARTNER_HISTORY: 50,
+          TRIPLET_OPPONENT_HISTORY: 40,
+          TRIPLET_LEAD_HISTORY: 20,
+          TRIPLET_CONSECUTIVE_MATCH: 35,
+          TRIPLET_CONSECUTIVE_PARTNER: 25,
+          MATCH_HISTORY_PATTERN: 50,
+          MIXED_BONUS: 100,
+          PATTERN_CONSECUTIVE_MATCH: 35,
+          PATTERN_CONSECUTIVE_PARTNER: 25,
+        },
+        // 公平性重視型
+        fairness: {
+          PLAY_COUNT_SORT: 150,
+          LEAD_PLAYER_COUNT: 80,
+          CONSECUTIVE_REST: 25,
+          MATCH_HISTORY_SELECT: 80,
+          PLAY_COUNT_SELECT: 70,
+          PARTNER_HISTORY: 10,
+          CONSECUTIVE_MATCH_OPPONENT: 15,
+          CONSECUTIVE_PARTNER_OPPONENT: 10,
+          TRIPLET_PARTNER_HISTORY: 50,
+          TRIPLET_OPPONENT_HISTORY: 30,
+          TRIPLET_LEAD_HISTORY: 25,
+          TRIPLET_CONSECUTIVE_MATCH: 15,
+          TRIPLET_CONSECUTIVE_PARTNER: 10,
+          MATCH_HISTORY_PATTERN: 50,
+          MIXED_BONUS: 100,
+          PATTERN_CONSECUTIVE_MATCH: 15,
+          PATTERN_CONSECUTIVE_PARTNER: 10,
+        },
+        // 男女混合重視型
+        mixed: {
+          PLAY_COUNT_SORT: 100,
+          LEAD_PLAYER_COUNT: 50,
+          CONSECUTIVE_REST: 10,
+          MATCH_HISTORY_SELECT: 100,
+          PLAY_COUNT_SELECT: 50,
+          PARTNER_HISTORY: 10,
+          CONSECUTIVE_MATCH_OPPONENT: 25,
+          CONSECUTIVE_PARTNER_OPPONENT: 15,
+          TRIPLET_PARTNER_HISTORY: 50,
+          TRIPLET_OPPONENT_HISTORY: 30,
+          TRIPLET_LEAD_HISTORY: 20,
+          TRIPLET_CONSECUTIVE_MATCH: 20,
+          TRIPLET_CONSECUTIVE_PARTNER: 15,
+          MATCH_HISTORY_PATTERN: 50,
+          MIXED_BONUS: 200,
+          PATTERN_CONSECUTIVE_MATCH: 20,
+          PATTERN_CONSECUTIVE_PARTNER: 15,
+        },
+        // 連続性極限型
+        consecutive: {
+          PLAY_COUNT_SORT: 100,
+          LEAD_PLAYER_COUNT: 50,
+          CONSECUTIVE_REST: 10,
+          MATCH_HISTORY_SELECT: 120,
+          PLAY_COUNT_SELECT: 50,
+          PARTNER_HISTORY: 30,
+          CONSECUTIVE_MATCH_OPPONENT: 50,
+          CONSECUTIVE_PARTNER_OPPONENT: 30,
+          TRIPLET_PARTNER_HISTORY: 50,
+          TRIPLET_OPPONENT_HISTORY: 40,
+          TRIPLET_LEAD_HISTORY: 20,
+          TRIPLET_CONSECUTIVE_MATCH: 50,
+          TRIPLET_CONSECUTIVE_PARTNER: 30,
+          MATCH_HISTORY_PATTERN: 50,
+          MIXED_BONUS: 100,
+          PATTERN_CONSECUTIVE_MATCH: 50,
+          PATTERN_CONSECUTIVE_PARTNER: 30,
+        },
       };
 
       const MIN_PLAYERS = {
@@ -458,12 +712,20 @@
         /**
          * 対戦主役候補のスコアを計算
          */
-        static calculateOpponentLeadScore(history, leadPlayer, candidate) {
+        static calculateOpponentLeadScore(
+          history,
+          playCount,
+          leadPlayer,
+          candidate
+        ) {
           const matchScore = -history.match[leadPlayer][candidate];
           const partnerScore = -history.partner[leadPlayer][candidate];
+          const playScore =
+            -playCount[candidate] * SCORING_WEIGHTS.PLAY_COUNT_SELECT;
           return (
             matchScore +
-            partnerScore * SCORING_WEIGHTS.PARTNER_HISTORY -
+            partnerScore * SCORING_WEIGHTS.PARTNER_HISTORY +
+            playScore -
             candidate * SCORING_WEIGHTS.PLAYER_NUMBER
           );
         }
@@ -486,20 +748,218 @@
 
           return partnerScore + matchScore;
         }
+
+        /**
+         * ミックスペアのボーナススコアを計算
+         * 男女ペアの場合はボーナスを付与
+         */
+        static calculateMixedBonus(genders, t1p1, t1p2, t2p1, t2p2) {
+          if (!genders) return 0;
+
+          let bonus = 0;
+          // チーム1が男女ペアの場合
+          if (genders[t1p1] !== genders[t1p2]) {
+            bonus += SCORING_WEIGHTS.MIXED_BONUS;
+          }
+          // チーム2が男女ペアの場合
+          if (genders[t2p1] !== genders[t2p2]) {
+            bonus += SCORING_WEIGHTS.MIXED_BONUS;
+          }
+          return bonus;
+        }
+
+        /**
+         * 三人組（主役+対手主役+队友）のスコアを計算
+         * 主役と对手の对戦で、特定の队友がどのくらい相性が良いかを評価
+         *
+         * スコア計算：
+         *   - ペア履歴スコア: 主役とペアの搭档履歴（少ないほど高得点）
+         *   - 対手との対戦: ペアと対手の対戦履歴（少ないほど高得点）
+         *   - 主役の対戦: 主役と対手の対戦履歴
+         *
+         * @param {Object} history - { partner: 搭档履歴, match: 対戦履歴 }
+         * @param {number} lead - 主役プレイヤーのインデックス
+         * @param {number} opponent - 対手主役のインデックス
+         * @param {number} partner - 队友のインデックス
+         * @return {number} 評価スコア（高いほど良い）
+         */
+        static calculateTripletScore(history, lead, opponent, partner) {
+          // 主役とペアの搭档履歴（同じペアが多いと減点）
+          const partnerHistoryScore =
+            -history.partner[lead][partner] *
+            SCORING_WEIGHTS.TRIPLET_PARTNER_HISTORY;
+
+          // ペアと対手の対戦履歴（交手が多いと減点）
+          const opponentHistoryScore =
+            -history.match[partner][opponent] *
+            SCORING_WEIGHTS.TRIPLET_OPPONENT_HISTORY;
+
+          // 主役と対手の対戦履歴（この三人組としての对戦パターン）
+          const leadHistoryScore =
+            -history.match[lead][opponent] *
+            SCORING_WEIGHTS.TRIPLET_LEAD_HISTORY;
+
+          return partnerHistoryScore + opponentHistoryScore + leadHistoryScore;
+        }
+
+        /**
+         * 連続対戦と連続队友のスコアを計算（L2用）
+         * @param {number} consecutiveMatches - 連続対戦回数
+         * @param {number} consecutivePartners - 連続队友回数
+         * @return {number} スコア
+         */
+        static calculateConsecutiveScoreL2(
+          consecutiveMatches,
+          consecutivePartners
+        ) {
+          const consecutiveMatchScore =
+            -consecutiveMatches * SCORING_WEIGHTS.CONSECUTIVE_MATCH_OPPONENT;
+          const consecutivePartnerScore =
+            -consecutivePartners * SCORING_WEIGHTS.CONSECUTIVE_PARTNER_OPPONENT;
+          return consecutiveMatchScore + consecutivePartnerScore;
+        }
+
+        /**
+         * 連続対戦と連続队友のスコアを計算（L3用）
+         * @param {number} consecutiveMatches - 連続対戦回数
+         * @param {number} consecutivePartners - 連続队友回数
+         * @return {number} スコア
+         */
+        static calculateConsecutiveScoreL3(
+          consecutiveMatches,
+          consecutivePartners
+        ) {
+          const consecutiveMatchScore =
+            -consecutiveMatches * SCORING_WEIGHTS.TRIPLET_CONSECUTIVE_MATCH;
+          const consecutivePartnerScore =
+            -consecutivePartners * SCORING_WEIGHTS.TRIPLET_CONSECUTIVE_PARTNER;
+          return consecutiveMatchScore + consecutivePartnerScore;
+        }
+
+        /**
+         * 連続対戦と連続队友のスコアを計算（L4用）
+         * @param {number} consecutiveMatches - 連続対戦回数
+         * @param {number} consecutivePartners - 連続队友回数
+         * @return {number} スコア
+         */
+        static calculateConsecutiveScoreL4(
+          consecutiveMatches,
+          consecutivePartners
+        ) {
+          const consecutiveMatchScore =
+            -consecutiveMatches * SCORING_WEIGHTS.PATTERN_CONSECUTIVE_MATCH;
+          const consecutivePartnerScore =
+            -consecutivePartners * SCORING_WEIGHTS.PATTERN_CONSECUTIVE_PARTNER;
+          return consecutiveMatchScore + consecutivePartnerScore;
+        }
       }
 
       // ==========================================
       // ローテーション生成クラス
       // ==========================================
+      //
+      // === Player Combination（プレイヤー組み合わせ）ロジック ===
+      //
+      // ✅ 各ラウンドでの組み合わせプロセス（3ステップ）:
+      //
+      //   【ステップ1】主役プレイヤーを選択 (selectLeadPlayers)
+      //   ┌─────────────────────────────────────────────┐
+      //   │ 各コート向けに主役プレイヤーを選択          │
+      //   │                                             │
+      //   │ スコア = 出場回数×100 + 主役回数×50 - 待機数×10 │
+      //   │ （最もスコアが低いプレイヤーを優先）         │
+      //   │                                             │
+      //   │ 優先度: 出場回数少ない > 主役少ない > 待機長い    │
+      //   └─────────────────────────────────────────────┘
+      //                    ↓
+      //   【ステップ2】対戦主役を選択 (selectOpponentLeadPlayers)
+      //   ┌─────────────────────────────────────────────┐
+      //   │ 各主役に対する最適な対戦相手を選択           │
+      //   │                                             │
+      //   │ 複数候補から4つのペアパターンを評価         │
+      //   │ 最も総合スコアが高いパターンになる組み合わせ │
+      //   │                                             │
+      //   │ 評価基準: パターンスコア = ペア履歴 + 対戦履歴 │
+      //   └─────────────────────────────────────────────┘
+      //                    ↓
+      //   【ステップ3】ペアプレイヤーを選択 (selectPairCandidates)
+      //   ┌─────────────────────────────────────────────┐
+      //   │ 主役と対戦主役の各自のペアを選択            │
+      //   │                                             │
+      //   │ スコア = -ペア履歴×50 - 対戦履歴×10         │
+      //   │         + ミックスボーナス                  │
+      //   │                                             │
+      //   │ 複数パターンある場合は全組み合わせを評価     │
+      //   │ (1-4パターン)最高スコアのパターンを選択    │
+      //   └─────────────────────────────────────────────┘
+      //
+      // ✅ スコア計算の優先度（高→低）:
+      //   1. ペア履歴      (重み: ×50) - 同じペアの回数
+      //   2. 対戦履歴      (重み: ×10) - 対戦相手との回数
+      //   3. ミックスボーナス (加点) - 男女ペア時 +1000点
+      //
+      // ✅ ヘルパーメソッド:
+      //   - calculateMatchScore()      : マッチスコアを計算
+      //   - generatePairPatterns()     : ペアパターンを生成
+      //   - findBestMatchesForRound()  : ラウンド全体の最適マッチ生成
+      //
       class RotationGenerator {
-        constructor(players, courtCount, matchType, roundCount = 10) {
+        constructor(
+          players,
+          courtCount,
+          matchType,
+          roundCount = 10,
+          matchSubType = "balanced",
+          genders = null
+        ) {
           this.players = players;
           this.courtCount = parseInt(courtCount);
           this.matchType = matchType;
           this.roundCount = parseInt(roundCount);
+          this.matchSubType = matchSubType;
+          this.genders = genders;
           this.rounds = [];
+          this.debugLogs = []; // デバッグログ用配列
+
+          // 対戦方式に応じた重み設定の適用
+          this.applyWeightsPreset(matchSubType);
+
           this.initializeStatistics();
           this.generateRotation();
+        }
+
+        /**
+         * 対戦方式に応じた重み設定を適用
+         */
+        applyWeightsPreset(matchSubType) {
+          const preset =
+            SCORING_WEIGHTS_PRESETS[matchSubType] ||
+            SCORING_WEIGHTS_PRESETS.balanced;
+          Object.keys(preset).forEach((key) => {
+            SCORING_WEIGHTS[key] = preset[key];
+          });
+          this.addLog(`対戦方式: ${this.getMatchSubTypeLabel(matchSubType)}`);
+        }
+
+        /**
+         * 対戦方式のラベルを取得
+         */
+        getMatchSubTypeLabel(matchSubType) {
+          const labels = {
+            balanced: "バランス型（推奨）",
+            diversity: "多様性優先型",
+            fairness: "公平性重視型",
+            mixed: "男女混合重視型",
+            consecutive: "連続性極限型",
+          };
+          return labels[matchSubType] || "バランス型（推奨）";
+        }
+
+        /**
+         * デバッグログを追加
+         */
+        addLog(message) {
+          this.debugLogs.push(message);
         }
 
         /**
@@ -508,6 +968,8 @@
         initializeStatistics() {
           const playerCount = this.players.length;
           this.playCount = Array(playerCount).fill(0);
+          this.leadPlayerCount = Array(playerCount).fill(0); // 主役選択回数
+          this.consecutiveRestCount = Array(playerCount).fill(0); // 連続待機ラウンド数
           this.matchHistory = Array(playerCount)
             .fill(null)
             .map(() => Array(playerCount).fill(0));
@@ -529,6 +991,26 @@
 
         /**
          * ダブルスローテーション生成
+         *
+         * 各ラウンドで以下の3ステップを実行してマッチを作成:
+         *
+         * ステップ1: 主役プレイヤーを選択
+         *   - 出場回数が少ないプレイヤーを優先
+         *   - 主役選択履歴を考慮
+         *   - 連続待機ラウンド数を考慮（待機が長いほど優先）
+         *
+         * ステップ2: 対戦主役プレイヤーを選択
+         *   - 各主役プレイヤーについて複数の対戦相手候補を評価
+         *   - 4つのペアパターンを試す
+         *   - 総合スコアが最も高いパターンになる組み合わせを選択
+         *
+         * ステップ3: 各マッチのペアプレイヤーを選択
+         *   - 主役と対戦主役が決定後、残りのプレイヤーからペア候補を選択
+         *   - ペア履歴と対戦履歴を考慮
+         *   - 複数の候補がある場合は全パターン(1-4パターン)を評価
+         *
+         * @param {number} playerCount - 参加者総数
+         * @param {number} maxRounds - 最大ラウンド数
          */
         generateDoublesRotation(playerCount, maxRounds) {
           for (let round = 0; round < maxRounds; round++) {
@@ -543,6 +1025,17 @@
               const roundGroup = this.createRoundGroup(roundMatches);
               this.rounds.push(roundGroup);
             }
+
+            // ラウンド後、待機ラウンド数を更新
+            for (let i = 0; i < playerCount; i++) {
+              if (!usedInRound.has(i)) {
+                // このプレイヤーは待機中
+                this.consecutiveRestCount[i]++;
+              } else {
+                // このプレイヤーは出場、待機カウントをリセット
+                this.consecutiveRestCount[i] = 0;
+              }
+            }
           }
         }
 
@@ -555,6 +1048,14 @@
             [match.t1p1, match.t1p2, match.t2p1, match.t2p2].forEach(
               (p) => this.playCount[p]++
             );
+
+            // 主役プレイヤー選択回数を更新
+            if (match.leadPlayer1 !== undefined) {
+              this.leadPlayerCount[match.leadPlayer1]++;
+            }
+            if (match.leadPlayer2 !== undefined) {
+              this.leadPlayerCount[match.leadPlayer2]++;
+            }
 
             // ペア履歴を更新
             this.partnerHistory[match.t1p1][match.t1p2]++;
@@ -605,22 +1106,78 @@
         }
 
         /**
+         * 連続対戦回数を取得（最近のラウンドでの連続対戦数）
+         * @param {number} player1 - プレイヤー1
+         * @param {number} player2 - プレイヤー2
+         * @return {number} 連続対戦回数
+         */
+        getConsecutiveMatches(player1, player2) {
+          // 簡易版：対戦回数をそのまま返す
+          return this.matchHistory[player1][player2];
+        }
+
+        /**
+         * 連続队友回数を取得（最近のラウンドでの連続队友数）
+         * @param {number} player1 - プレイヤー1
+         * @param {number} player2 - プレイヤー2
+         * @return {number} 連続队友回数
+         */
+        getConsecutivePartners(player1, player2) {
+          // 簡易版：搭档回数をそのまま返す
+          return this.partnerHistory[player1][player2];
+        }
+
+        /**
          * 主役プレイヤーを選択
+         *
+         * 出場回数、主役選択回数、連続待機ラウンド数の3つを考慮してスコアを計算し、
+         * 最もスコアが低いプレイヤーを主役として選択する（公平性を優先）
+         *
+         * スコア計算式:
+         *   出場回数 * 100 + 主役回数 * 50 - 連続待機数 * 10
+         *
+         * @param {number[]} availablePlayers - 選択可能なプレイヤーのインデックス配列
+         * @param {Set<number>} usedInRound - このラウンドで既に使用されたプレイヤーのセット
+         * @return {number[]} 選択された主役プレイヤーのインデックス配列
          */
         selectLeadPlayers(availablePlayers, usedInRound) {
+          // 利用可能なプレイヤーをスコア順にソート
+          const scoredPlayers = availablePlayers.map((player) => {
+            const playCountScore = this.playCount[player];
+            const leadPlayerCountScore = this.leadPlayerCount[player];
+            const restCountScore = this.consecutiveRestCount[player];
+            // 3つの要因を考慮（連続待機が長いほど優先度UP）
+            const score =
+              playCountScore * SCORING_WEIGHTS.PLAY_COUNT_SORT +
+              leadPlayerCountScore * SCORING_WEIGHTS.LEAD_PLAYER_COUNT -
+              restCountScore * SCORING_WEIGHTS.CONSECUTIVE_REST; // 待機が長いほどスコアが低くなる
+            return { player, score };
+          });
+
+          scoredPlayers.sort((a, b) => a.score - b.score);
+
           const leadPlayers = [];
           for (let i = 0; i < this.courtCount; i++) {
-            leadPlayers.push(availablePlayers[i]);
-            usedInRound.add(availablePlayers[i]);
+            leadPlayers.push(scoredPlayers[i].player);
+            usedInRound.add(scoredPlayers[i].player);
           }
           return leadPlayers;
         }
 
         /**
-         * 対戦主役プレイヤーを選択（パターン評価版）
+         * 対戦主役プレイヤーを選択
+         *
+         * 各主役プレイヤーについて、4つのペアパターンを評価し、
+         * 最もスコアが高いパターンになるような対戦主役を選択する
+         * （ペアや対戦の偏りを最小化）
+         *
+         * @param {number[]} availablePlayers - 選択可能なプレイヤーのインデックス配列
+         * @param {number[]} leadPlayers - 既に選択されている主役プレイヤーの配列
+         * @param {Set<number>} usedInRound - このラウンドで既に使用されたプレイヤーのセット
+         * @return {number[]} 選択された対戦主役プレイヤーのインデックス配列
          */
         selectOpponentLeadPlayers(availablePlayers, leadPlayers, usedInRound) {
-          console.log("\n対戦主役プレイヤー選択（汎用最適化版）:");
+          this.addLog("\n対戦主役プレイヤー選択（汎用最適化版）:");
 
           // 利用可能な候補者数を確認
           const currentlyAvailable = availablePlayers.filter(
@@ -629,18 +1186,18 @@
           const availableCount = currentlyAvailable.length;
           const requiredCount = this.courtCount * 2; // 各コート2名必要
 
-          console.log(
+          this.addLog(
             `  利用可能プレイヤー: ${availableCount}名, 必要数: ${requiredCount}名`
           );
-          console.log(
+          this.addLog(
             `  利用可能な候補: [${currentlyAvailable
               .map((p) => this.players[p])
               .join(", ")}]`
           );
-          console.log(`  usedInRoundに登録済み: ${usedInRound.size}名`);
+          this.addLog(`  usedInRoundに登録済み: ${usedInRound.size}名`);
 
           if (availableCount < requiredCount) {
-            console.log(
+            this.addLog(
               `  対戦主役候補が不足（必要:${requiredCount}名, 利用可能:${availableCount}名）`
             );
             return [];
@@ -654,14 +1211,14 @@
 
           // 1人目の候補を全コート分選択
           for (let courtIndex = 0; courtIndex < this.courtCount; courtIndex++) {
-            console.log(`  --- コート${courtIndex + 1}の1人目候補選択 ---`);
+            this.addLog(`  --- コート${courtIndex + 1}の1人目候補選択 ---`);
             const candidate = this.selectOpponentCandidate(
               availablePlayers,
               leadPlayers[courtIndex],
               usedInRound
             );
             if (candidate === null) {
-              console.log(`コート${courtIndex + 1}の対戦主役候補1が不足`);
+              this.addLog(`コート${courtIndex + 1}の対戦主役候補1が不足`);
               this.releaseOpponentCandidates(
                 opponentCandidatesPerCourt,
                 courtIndex,
@@ -670,7 +1227,7 @@
               );
               return [];
             }
-            console.log(
+            this.addLog(
               `  コート${courtIndex + 1}: ${
                 this.players[leadPlayers[courtIndex]]
               }の対戦主役候補1: ${this.players[candidate]}`
@@ -681,14 +1238,14 @@
 
           // 2人目の候補を全コート分選択
           for (let courtIndex = 0; courtIndex < this.courtCount; courtIndex++) {
-            console.log(`  --- コート${courtIndex + 1}の2人目候補選択 ---`);
+            this.addLog(`  --- コート${courtIndex + 1}の2人目候補選択 ---`);
             const candidate = this.selectOpponentCandidate(
               availablePlayers,
               leadPlayers[courtIndex],
               usedInRound
             );
             if (candidate === null) {
-              console.log(`コート${courtIndex + 1}の対戦主役候補2が不足`);
+              this.addLog(`コート${courtIndex + 1}の対戦主役候補2が不足`);
               this.releaseOpponentCandidates(
                 opponentCandidatesPerCourt,
                 this.courtCount,
@@ -697,7 +1254,7 @@
               );
               return [];
             }
-            console.log(
+            this.addLog(
               `  コート${courtIndex + 1}: ${
                 this.players[leadPlayers[courtIndex]]
               }の対戦主役候補2: ${this.players[candidate]}`
@@ -750,6 +1307,7 @@
             try {
               const score = ScoreCalculator.calculateOpponentLeadScore(
                 history,
+                this.playCount,
                 leadPlayer,
                 candidate
               );
@@ -806,7 +1364,7 @@
           leadPlayers,
           usedInRound
         ) {
-          console.log("\n主役と対戦主役のパターン評価:");
+          this.addLog("\n主役と対戦主役のパターン評価:");
           const generatePatterns = (index, currentPattern) => {
             if (index === this.courtCount) {
               return [currentPattern.slice()];
@@ -842,7 +1400,7 @@
                   }`
               )
               .join(", ");
-            console.log(`  ${patternStr}: スコア=${score}`);
+            this.addLog(`  ${patternStr}: スコア=${score}`);
 
             if (score > bestScore) {
               bestScore = score;
@@ -859,7 +1417,7 @@
                   }`
               )
               .join(", ");
-            console.log(`最終選択: ${selectionStr}`);
+            this.addLog(`最終選択: ${selectionStr}`);
 
             // 使用されなかった候補を解放
             const allCandidates = opponentCandidatesPerCourt.flat();
@@ -933,8 +1491,25 @@
         }
 
         // 汎用ロジック：ラウンド全体の最適なマッチを生成
+        /**
+         * ラウンドの最適なマッチを生成
+         *
+         * 以下のステップでラウンド内の全マッチを最適化:
+         * 1. 主役プレイヤーを出場回数ソート後に最適化選択
+         * 2. 対戦主役プレイヤーをパターン評価で最適化選択
+         * 3. 各マッチのペアプレイヤーを複数パターン評価で最適化選択
+         *
+         * スコア計算の優先度（高い順):
+         *   - ペア履歴（同じペアが多い場合は減点）
+         *   - 対戦履歴（同じ対手が多い場合は減点）
+         *   - ミックスボーナス（男女ペアの場合は加点）
+         *
+         * @param {number} playerCount - 参加者総数
+         * @param {Set<number>} usedInRound - このラウンドで使用済みのプレイヤーセット
+         * @return {Array} 生成されたマッチの配列
+         */
         findBestMatchesForRound(playerCount, usedInRound) {
-          console.log("\n=== ラウンド生成開始 ===");
+          this.addLog("\n=== ラウンド生成開始 ===");
           const matches = [];
 
           // 利用可能なプレイヤーを出場回数の少ない順にソート
@@ -945,11 +1520,12 @@
             .filter((i) => !usedInRound.has(i))
             .sort((a, b) => this.playCount[a] - this.playCount[b]);
 
-          console.log(
-            `利用可能プレイヤー（${availablePlayers.length}名）:`,
-            availablePlayers
+          this.addLog(
+            `利用可能プレイヤー（${
+              availablePlayers.length
+            }名）: ${availablePlayers
               .map((p) => `${this.players[p]}(出場:${this.playCount[p]})`)
-              .join(", ")
+              .join(", ")}`
           );
 
           const requiredPlayers = this.courtCount * 4;
@@ -965,9 +1541,10 @@
             availablePlayers,
             usedInRound
           );
-          console.log(
-            "主役プレイヤー:",
-            leadPlayers.map((p) => this.players[p]).join(", ")
+          this.addLog(
+            `主役プレイヤー: ${leadPlayers
+              .map((p) => this.players[p])
+              .join(", ")}`
           );
 
           // ステップ2: 対戦主役プレイヤーを交互に選択（汎用版）
@@ -977,25 +1554,25 @@
             usedInRound
           );
           if (opponentLeadPlayers.length < this.courtCount) {
-            console.log("対戦主役プレイヤーの選択に失敗");
+            this.addLog("対戦主役プレイヤーの選択に失敗");
             return matches;
           }
 
           // ステップ3: 各コートのマッチを作成
-          console.log("\nマッチ作成:");
+          this.addLog("\nマッチ作成:");
           for (let court = 0; court < this.courtCount; court++) {
-            console.log(`\n--- コート${court + 1} ---`);
+            this.addLog(`\n--- コート${court + 1} ---`);
             if (
               court >= leadPlayers.length ||
               court >= opponentLeadPlayers.length
             ) {
-              console.log("主役プレイヤー不足");
+              this.addLog("主役プレイヤー不足");
               break;
             }
 
             const lead1 = leadPlayers[court];
             const lead2 = opponentLeadPlayers[court];
-            console.log(
+            this.addLog(
               `主役: ${this.players[lead1]} vs ${this.players[lead2]}`
             );
 
@@ -1003,11 +1580,11 @@
             const remainingPlayers = availablePlayers.filter(
               (p) => !usedInRound.has(p)
             );
-            console.log(`  残りプレイヤー: ${remainingPlayers.length}名`);
+            this.addLog(`  残りプレイヤー: ${remainingPlayers.length}名`);
 
             // 最低2名必要（各主役に1名ずつ）
             if (remainingPlayers.length < 2) {
-              console.log("ペアプレイヤーが不足（最低2名必要）");
+              this.addLog("ペアプレイヤーが不足（最低2名必要）");
               continue;
             }
 
@@ -1016,75 +1593,145 @@
               2,
               Math.floor(remainingPlayers.length / 2)
             );
-            console.log(`  各主役に${pairsNeeded}名のペア候補を選択`);
+            this.addLog(`  各主役に${pairsNeeded}名のペア候補を選択`);
 
-            // lead1のペア候補を選択
-            // lead1のペア候補を選択
+            // ペア候補を交互に選出
             const lead1Partners = [];
-            let lead1Candidates = [];
-            for (const candidate of availablePlayers) {
-              if (usedInRound.has(candidate)) continue;
+            const lead2Partners = [];
 
-              const partnerScore = -this.partnerHistory[lead1][candidate] * 50;
-              const matchScore = -this.matchHistory[lead1][candidate] * 5;
-              const playScore = -this.playCount[candidate] * 10;
-              const playerNumberScore = -candidate * 0.01;
-              const score =
-                partnerScore + matchScore + playScore + playerNumberScore;
+            for (let i = 0; i < pairsNeeded; i++) {
+              // lead1のペア候補を選択（三人組評価）
+              let lead1Candidates = [];
+              for (const candidate of availablePlayers) {
+                if (usedInRound.has(candidate)) continue;
 
-              lead1Candidates.push({ player: candidate, score });
-            }
-            lead1Candidates.sort((a, b) => b.score - a.score);
+                // 三人組（lead1 + lead2 + candidate）を評価
+                const tripletScore = ScoreCalculator.calculateTripletScore(
+                  { partner: this.partnerHistory, match: this.matchHistory },
+                  lead1,
+                  lead2,
+                  candidate
+                );
 
-            if (lead1Candidates.length < pairsNeeded) {
-              console.log(
-                `lead1のペア候補が不足（必要:${pairsNeeded}名, 利用可能:${lead1Candidates.length}名）`
+                // 連続対戦と連続队友のスコアを計算
+                const consecutiveMatches = this.getConsecutiveMatches(
+                  lead2,
+                  candidate
+                );
+                const consecutivePartners = this.getConsecutivePartners(
+                  lead1,
+                  candidate
+                );
+                const consecutiveScore =
+                  ScoreCalculator.calculateConsecutiveScoreL3(
+                    consecutiveMatches,
+                    consecutivePartners
+                  );
+
+                const totalScore = tripletScore + consecutiveScore;
+
+                lead1Candidates.push({
+                  player: candidate,
+                  score: totalScore,
+                  tripletScore,
+                  consecutiveScore,
+                });
+              }
+              lead1Candidates.sort((a, b) => b.score - a.score);
+
+              if (lead1Candidates.length < 1) {
+                this.addLog(`lead1の${i + 1}人目ペア候補が不足`);
+                // ロールバック
+                lead1Partners.forEach((p) => usedInRound.delete(p));
+                lead2Partners.forEach((p) => usedInRound.delete(p));
+                break;
+              }
+
+              const lead1Partner = lead1Candidates[0].player;
+              lead1Partners.push(lead1Partner);
+              usedInRound.add(lead1Partner);
+              this.addLog(
+                `${this.players[lead1]}の${i + 1}人目ペア候補（vs ${
+                  this.players[lead2]
+                }）: ${
+                  this.players[lead1Partner]
+                } (スコア: ${lead1Candidates[0].score.toFixed(2)})`
               );
+
+              // lead2のペア候補を選択（三人組評価）
+              let lead2Candidates = [];
+              for (const candidate of availablePlayers) {
+                if (usedInRound.has(candidate)) continue;
+
+                // 三人組（lead2 + lead1 + candidate）を評価
+                const tripletScore = ScoreCalculator.calculateTripletScore(
+                  { partner: this.partnerHistory, match: this.matchHistory },
+                  lead2,
+                  lead1,
+                  candidate
+                );
+
+                // 連続対戦と連続队友のスコアを計算
+                const consecutiveMatches = this.getConsecutiveMatches(
+                  lead1,
+                  candidate
+                );
+                const consecutivePartners = this.getConsecutivePartners(
+                  lead2,
+                  candidate
+                );
+                const consecutiveScore =
+                  ScoreCalculator.calculateConsecutiveScoreL3(
+                    consecutiveMatches,
+                    consecutivePartners
+                  );
+
+                const totalScore = tripletScore + consecutiveScore;
+
+                lead2Candidates.push({
+                  player: candidate,
+                  score: totalScore,
+                  tripletScore,
+                  consecutiveScore,
+                });
+              }
+              lead2Candidates.sort((a, b) => b.score - a.score);
+
+              if (lead2Candidates.length < 1) {
+                this.addLog(`lead2の${i + 1}人目ペア候補が不足`);
+                // ロールバック
+                lead1Partners.forEach((p) => usedInRound.delete(p));
+                lead2Partners.forEach((p) => usedInRound.delete(p));
+                break;
+              }
+
+              const lead2Partner = lead2Candidates[0].player;
+              lead2Partners.push(lead2Partner);
+              usedInRound.add(lead2Partner);
+              this.addLog(
+                `${this.players[lead2]}の${i + 1}人目ペア候補（vs ${
+                  this.players[lead1]
+                }）: ${
+                  this.players[lead2Partner]
+                } (スコア: ${lead2Candidates[0].score.toFixed(2)})`
+              );
+            }
+
+            // 必要数のペア候補が揃わなかった場合はスキップ
+            if (
+              lead1Partners.length < pairsNeeded ||
+              lead2Partners.length < pairsNeeded
+            ) {
+              this.addLog(`ペア候補が不足しています`);
               continue;
             }
 
-            for (let i = 0; i < pairsNeeded; i++) {
-              const partner = lead1Candidates[i].player;
-              lead1Partners.push(partner);
-              usedInRound.add(partner);
-            }
-            console.log(
+            this.addLog(
               `${this.players[lead1]}のペア候補: ${lead1Partners
                 .map((p) => this.players[p])
                 .join(", ")}`
             );
-
-            // lead2のペア候補を選択
-            const lead2Partners = [];
-            let lead2Candidates = [];
-            for (const candidate of availablePlayers) {
-              if (usedInRound.has(candidate)) continue;
-
-              const partnerScore = -this.partnerHistory[lead2][candidate] * 50;
-              const matchScore = -this.matchHistory[lead2][candidate] * 5;
-              const playScore = -this.playCount[candidate] * 10;
-              const playerNumberScore = -candidate * 0.01;
-              const score =
-                partnerScore + matchScore + playScore + playerNumberScore;
-
-              lead2Candidates.push({ player: candidate, score });
-            }
-            lead2Candidates.sort((a, b) => b.score - a.score);
-
-            if (lead2Candidates.length < pairsNeeded) {
-              console.log(
-                `lead2のペア候補が不足（必要:${pairsNeeded}名, 利用可能:${lead2Candidates.length}名）`
-              );
-              lead1Partners.forEach((p) => usedInRound.delete(p));
-              continue;
-            }
-
-            for (let i = 0; i < pairsNeeded; i++) {
-              const partner = lead2Candidates[i].player;
-              lead2Partners.push(partner);
-              usedInRound.add(partner);
-            }
-            console.log(
+            this.addLog(
               `${this.players[lead2]}のペア候補: ${lead2Partners
                 .map((p) => this.players[p])
                 .join(", ")}`
@@ -1092,72 +1739,50 @@
 
             // パターンを評価してマッチを作成
             let bestMatch = null;
+            const patterns = this.generatePairPatterns(
+              lead1,
+              lead2,
+              lead1Partners,
+              lead2Partners
+            );
 
             if (pairsNeeded === 1) {
               // 1名ずつの場合は1パターンのみ
-              bestMatch = {
-                t1p1: lead1,
-                t1p2: lead1Partners[0],
-                t2p1: lead2,
-                t2p2: lead2Partners[0],
-              };
+              bestMatch = patterns[0];
+              bestMatch.leadPlayer1 = lead1;
+              bestMatch.leadPlayer2 = lead2;
               console.log(
-                `マッチ: (${this.players[lead1]},${
-                  this.players[lead1Partners[0]]
+                `マッチ: (${this.players[bestMatch.t1p1]},${
+                  this.players[bestMatch.t1p2]
                 }) vs ` +
-                  `(${this.players[lead2]},${this.players[lead2Partners[0]]})`
+                  `(${this.players[bestMatch.t2p1]},${
+                    this.players[bestMatch.t2p2]
+                  })`
               );
             } else {
               // 2名ずつの場合は4パターンを評価
-              const patterns = [
-                {
-                  t1p1: lead1,
-                  t1p2: lead1Partners[0],
-                  t2p1: lead2,
-                  t2p2: lead2Partners[0],
-                },
-                {
-                  t1p1: lead1,
-                  t1p2: lead1Partners[0],
-                  t2p1: lead2,
-                  t2p2: lead2Partners[1],
-                },
-                {
-                  t1p1: lead1,
-                  t1p2: lead1Partners[1],
-                  t2p1: lead2,
-                  t2p2: lead2Partners[0],
-                },
-                {
-                  t1p1: lead1,
-                  t1p2: lead1Partners[1],
-                  t2p1: lead2,
-                  t2p2: lead2Partners[1],
-                },
-              ];
 
               let bestMatchScore = -Infinity;
-              console.log("\nペアパターン評価 (4パターン):");
-
+              this.addLog("\nペアパターン評価 (4パターン):");
               for (const pattern of patterns) {
                 const { t1p1, t1p2, t2p1, t2p2 } = pattern;
 
-                const partnerScore =
-                  -(
-                    this.partnerHistory[t1p1][t1p2] +
-                    this.partnerHistory[t2p1][t2p2]
-                  ) * 50;
-                const matchScore =
-                  -(
-                    this.matchHistory[t1p1][t2p1] +
-                    this.matchHistory[t1p1][t2p2] +
-                    this.matchHistory[t1p2][t2p1] +
-                    this.matchHistory[t1p2][t2p2]
-                  ) * 10;
+                // 新しいヘルパーメソッドを使用してスコアを計算
+                const scoreInfo = this.calculateMatchScore(
+                  t1p1,
+                  t1p2,
+                  t2p1,
+                  t2p2
+                );
+                const score = scoreInfo.total;
 
-                const score = partnerScore + matchScore;
-                console.log(
-                  `  (${this.players[t1p1]},${this.players[t1p2]}) vs (${this.players[t2p1]},${this.players[t2p2]}): スコア=${score}`
+                let scoreDetail = `スコア=${score}`;
+                if (this.matchSubType === "mixed" && scoreInfo.mixedBonus > 0) {
+                  scoreDetail += ` (ミックスボーナス: +${scoreInfo.mixedBonus})`;
+                }
+
+                this.addLog(
+                  `  (${this.players[t1p1]},${this.players[t1p2]}) vs (${this.players[t2p1]},${this.players[t2p2]}): ${scoreDetail}`
                 );
 
                 if (score > bestMatchScore) {
@@ -1173,6 +1798,10 @@
                   this.players[bestMatch.t2p2]
                 })`
               );
+
+              // 主役プレイヤー情報を記録
+              bestMatch.leadPlayer1 = lead1;
+              bestMatch.leadPlayer2 = lead2;
 
               // 使用されなかった候補をusedInRoundから削除
               const usedPartners = [bestMatch.t1p2, bestMatch.t2p2];
@@ -1192,7 +1821,139 @@
         }
 
         /**
-         * ペア候補を選択（指定数）
+         * マッチのスコアを計算（ペアパターン評価用）
+         *
+         * ペアパターンの最適性を評価する総合スコアを計算
+         * スコア = ペア履歴スコア + 対戦履歴スコア + 連続スコア + ミックスボーナス
+         *
+         * スコア計算式:
+         *   - ペア履歴スコア: -(パートナー履歴1 + パートナー履歴2) * 50
+         *   - 対戦履歴スコア: -(対戦相手との履歴合計) * 10
+         *   - 連続スコア: 連続対戦と連続队友による減点
+         *   - ミックスボーナス: matchSubType==="mixed"の場合のみ
+         *
+         * @param {number} t1p1 - チーム1プレイヤー1のインデックス
+         * @param {number} t1p2 - チーム1プレイヤー2のインデックス
+         * @param {number} t2p1 - チーム2プレイヤー1のインデックス
+         * @param {number} t2p2 - チーム2プレイヤー2のインデックス
+         * @return {Object} {total: 総合スコア, partnerScore: ペア履歴スコア, matchScore: 対戦履歴スコア, consecutiveScore: 連続スコア, mixedBonus: ミックスボーナス}
+         */
+        calculateMatchScore(t1p1, t1p2, t2p1, t2p2) {
+          // ペア履歴スコア
+          const partnerScore =
+            -(
+              this.partnerHistory[t1p1][t1p2] + this.partnerHistory[t2p1][t2p2]
+            ) * SCORING_WEIGHTS.MATCH_HISTORY_PATTERN;
+
+          // 対戦履歴スコア
+          const matchScore =
+            -(
+              this.matchHistory[t1p1][t2p1] +
+              this.matchHistory[t1p1][t2p2] +
+              this.matchHistory[t1p2][t2p1] +
+              this.matchHistory[t1p2][t2p2]
+            ) * SCORING_WEIGHTS.MATCH_HISTORY_PATTERN;
+
+          // 連続対戦と連続队友のスコア
+          const consecutiveMatches =
+            this.getConsecutiveMatches(t1p1, t2p1) +
+            this.getConsecutiveMatches(t1p1, t2p2) +
+            this.getConsecutiveMatches(t1p2, t2p1) +
+            this.getConsecutiveMatches(t1p2, t2p2);
+
+          const consecutivePartners =
+            this.getConsecutivePartners(t1p1, t1p2) +
+            this.getConsecutivePartners(t2p1, t2p2);
+
+          const consecutiveScore = ScoreCalculator.calculateConsecutiveScoreL4(
+            consecutiveMatches,
+            consecutivePartners
+          );
+
+          // ミックス優先の場合はボーナスを追加
+          const mixedBonus =
+            this.matchSubType === "mixed"
+              ? ScoreCalculator.calculateMixedBonus(
+                  this.genders,
+                  t1p1,
+                  t1p2,
+                  t2p1,
+                  t2p2
+                )
+              : 0;
+
+          return {
+            total: partnerScore + matchScore + consecutiveScore + mixedBonus,
+            partnerScore,
+            matchScore,
+            consecutiveScore,
+            mixedBonus,
+          };
+        }
+
+        /**
+         * ペアパターンを生成
+         * lead1, lead2 と各自のパートナー候補から全組み合わせパターンを作成
+         */
+        generatePairPatterns(lead1, lead2, lead1Partners, lead2Partners) {
+          const pairsNeeded = lead1Partners.length;
+
+          if (pairsNeeded === 1) {
+            // 1名ずつの場合は1パターンのみ
+            return [
+              {
+                t1p1: lead1,
+                t1p2: lead1Partners[0],
+                t2p1: lead2,
+                t2p2: lead2Partners[0],
+              },
+            ];
+          } else if (pairsNeeded === 2) {
+            // 2名ずつの場合は4パターンを生成
+            return [
+              {
+                t1p1: lead1,
+                t1p2: lead1Partners[0],
+                t2p1: lead2,
+                t2p2: lead2Partners[0],
+              },
+              {
+                t1p1: lead1,
+                t1p2: lead1Partners[0],
+                t2p1: lead2,
+                t2p2: lead2Partners[1],
+              },
+              {
+                t1p1: lead1,
+                t1p2: lead1Partners[1],
+                t2p1: lead2,
+                t2p2: lead2Partners[0],
+              },
+              {
+                t1p1: lead1,
+                t1p2: lead1Partners[1],
+                t2p1: lead2,
+                t2p2: lead2Partners[1],
+              },
+            ];
+          }
+          return [];
+        }
+
+        /**
+         * ペア候補を選択
+         *
+         * 指定されたリードプレイヤーとのペアに適したプレイヤーを選択する
+         * スコアは以下の要因を考慮:
+         *   - ペア履歴（一緒にプレイした回数が少ないほど優先）
+         *   - 対戦履歴（対戦相手を適切に選ぶ）
+         *   - 出場回数（均衡を取る）
+         *
+         * @param {number} leadPlayer - リードプレイヤーのインデックス
+         * @param {number[]} availablePlayers - 選択可能なプレイヤーのインデックス配列
+         * @param {Set<number>} usedInRound - このラウンドで既に使用されたプレイヤーのセット
+         * @param {number} count - 選択するプレイヤー数
+         * @return {number[]} 選択されたプレイヤーのインデックス配列（スコア順）
          */
         selectPairCandidates(leadPlayer, availablePlayers, usedInRound, count) {
           const history = {
@@ -1218,6 +1979,9 @@
 
         /**
          * ペアパターンを評価（4パターン）
+         *
+         * 2名の主役プレイヤーと各自のペア候補から4つのペアパターンを評価し、
+         * 総合スコアが最も高いパターンを選択する
          */
         evaluatePairPatterns(lead1, lead2, lead1Partners, lead2Partners) {
           const patterns = [
@@ -2100,8 +2864,16 @@
           this.playerCountSelect = document.getElementById("playerCount");
           this.courtCountSelect = document.getElementById("courtCount");
           this.roundCountSelect = document.getElementById("roundCount");
+          this.matchSubTypeSelect = document.getElementById("matchSubType");
+          this.matchFormatRadios = document.querySelectorAll(
+            'input[name="matchFormat"]'
+          );
           this.participantsInput = document.getElementById("participants");
           this.participantCount = document.getElementById("participantCount");
+          this.genderCheckboxGroup = document.getElementById(
+            "genderCheckboxGroup"
+          );
+          this.genderCheckboxes = document.getElementById("genderCheckboxes");
           this.generateBtn = document.getElementById("generateBtn");
           this.formatBtn = document.getElementById("formatBtn");
           this.randomBtn = document.getElementById("randomBtn");
@@ -2127,6 +2899,12 @@
               this.playerCountSelect.value = "6";
             }
           }, 0);
+
+          // ローカルストレージから前回の入力内容を復元
+          this.loadFromLocalStorage();
+
+          // 入力内容の変更時に自動保存
+          this.setupAutoSave();
         }
 
         setDefaultTitle() {
@@ -2135,6 +2913,245 @@
           const dayOfYear =
             Math.floor((today - startOfYear) / (1000 * 60 * 60 * 24)) + 1;
           this.titleInput.value = `第${dayOfYear}回 フレームショット選手権`;
+        }
+
+        /**
+         * ローカルストレージに入力内容を保存
+         */
+        saveToLocalStorage() {
+          const selectedFormat =
+            Array.from(this.matchFormatRadios).find((radio) => radio.checked)
+              ?.value || "doubles";
+          const data = {
+            title: this.titleInput.value,
+            participants: this.participantsInput.value,
+            playerCount: this.playerCountSelect.value,
+            courtCount: this.courtCountSelect.value,
+            roundCount: this.roundCountSelect.value,
+            matchFormat: selectedFormat,
+            matchSubType: this.matchSubTypeSelect.value,
+            genders: this.getGenderSelections(),
+          };
+          localStorage.setItem("tennisRotationData", JSON.stringify(data));
+        }
+
+        /**
+         * ローカルストレージから入力内容を復元
+         */
+        loadFromLocalStorage() {
+          const data = localStorage.getItem("tennisRotationData");
+          if (data) {
+            try {
+              const saved = JSON.parse(data);
+              this.titleInput.value = saved.title || this.titleInput.value;
+              this.participantsInput.value = saved.participants || "";
+              this.playerCountSelect.value = saved.playerCount || "6";
+              this.courtCountSelect.value = saved.courtCount || "1";
+              this.roundCountSelect.value = saved.roundCount || "10";
+
+              // matchFormatを復元
+              const savedFormat = saved.matchFormat || "doubles";
+              const formatRadio = Array.from(this.matchFormatRadios).find(
+                (radio) => radio.value === savedFormat
+              );
+              if (formatRadio) {
+                formatRadio.checked = true;
+              }
+
+              this.matchSubTypeSelect.value = saved.matchSubType || "balanced";
+              this.updatePlayerCountOptions();
+              this.updateParticipantCount();
+              this.toggleGenderInput();
+              this.updateMatchSubTypeOptions();
+              // 性別情報を復元
+              if (saved.genders) {
+                setTimeout(() => this.setGenderSelections(saved.genders), 0);
+              }
+            } catch (e) {
+              console.error("Failed to load from localStorage:", e);
+            }
+          } else {
+            // 初回起動時はupdateMatchSubTypeOptionsを実行
+            this.updateMatchSubTypeOptions();
+          }
+        }
+
+        /**
+         * 自動保存の設定
+         */
+        setupAutoSave() {
+          this.titleInput.addEventListener("change", () =>
+            this.saveToLocalStorage()
+          );
+          this.participantsInput.addEventListener("change", () =>
+            this.saveToLocalStorage()
+          );
+          this.playerCountSelect.addEventListener("change", () =>
+            this.saveToLocalStorage()
+          );
+          this.courtCountSelect.addEventListener("change", () =>
+            this.saveToLocalStorage()
+          );
+          this.roundCountSelect.addEventListener("change", () =>
+            this.saveToLocalStorage()
+          );
+          this.matchSubTypeSelect.addEventListener("change", () =>
+            this.saveToLocalStorage()
+          );
+          this.matchFormatRadios.forEach((radio) => {
+            radio.addEventListener("change", () => this.saveToLocalStorage());
+          });
+        }
+
+        /**
+         * 試合形式に応じて対戦方式の表示を更新
+         */
+        updateMatchSubTypeOptions() {
+          const selectedFormat = Array.from(this.matchFormatRadios).find(
+            (radio) => radio.checked
+          )?.value;
+
+          const mixedOption = document.getElementById("mixedOption");
+          const mixedExplanation = document.getElementById("mixedExplanation");
+
+          if (selectedFormat === "doubles-mixed") {
+            // ダブルス(ミックス優先)が選択されている場合：男女混合重視型を表示して性別入力を表示
+            if (mixedOption) {
+              mixedOption.style.display = "";
+              // 男女混合重視型をデフォルト選択
+              this.matchSubTypeSelect.value = "mixed";
+            }
+            if (mixedExplanation) {
+              mixedExplanation.style.display = "";
+            }
+            // 性別選択フィールドを表示
+            if (this.genderCheckboxGroup) {
+              this.genderCheckboxGroup.style.display = "block";
+              // チェックボックスを更新
+              this.updateGenderCheckboxes();
+            }
+          } else {
+            // ダブルスが選択されている場合：男女混合重視型を非表示にして性別入力を非表示
+            if (mixedOption) {
+              mixedOption.style.display = "none";
+              // もし男女混合重視型が選択されていたら、バランス型に変更
+              if (this.matchSubTypeSelect.value === "mixed") {
+                this.matchSubTypeSelect.value = "balanced";
+              }
+            }
+            if (mixedExplanation) {
+              mixedExplanation.style.display = "none";
+            }
+            // 性別選択フィールドを非表示
+            if (this.genderCheckboxGroup) {
+              this.genderCheckboxGroup.style.display = "none";
+            }
+          }
+        }
+
+        /**
+         * 現在の性別選択状態を取得
+         */
+        getGenderSelections() {
+          const genders = [];
+          const playerCount = parseInt(this.playerCountSelect.value) || 0;
+          for (let i = 0; i < playerCount; i++) {
+            const mRadio = document.getElementById(`gender_${i}_M`);
+            const fRadio = document.getElementById(`gender_${i}_F`);
+            if (mRadio && mRadio.checked) {
+              genders[i] = "M";
+            } else if (fRadio && fRadio.checked) {
+              genders[i] = "F";
+            }
+          }
+          return genders;
+        }
+
+        /**
+         * 性別選択状態を復元
+         */
+        setGenderSelections(genders) {
+          if (!genders || genders.length === 0) return;
+          genders.forEach((gender, i) => {
+            if (gender === "M") {
+              const radio = document.getElementById(`gender_${i}_M`);
+              if (radio) radio.checked = true;
+            } else if (gender === "F") {
+              const radio = document.getElementById(`gender_${i}_F`);
+              if (radio) radio.checked = true;
+            }
+          });
+        }
+
+        /**
+         * 性別を一括設定（男性のみ）
+         */
+        setAllMale() {
+          const playerCount = parseInt(this.playerCountSelect.value) || 0;
+          for (let i = 0; i < playerCount; i++) {
+            const radio = document.getElementById(`gender_${i}_M`);
+            if (radio) {
+              radio.checked = true;
+              // カード背景色を青系に変更
+              const card = document.getElementById(`card_${i}`);
+              if (card) {
+                card.style.background = "#E3F2FD";
+                card.style.borderColor = "#90CAF9";
+              }
+            }
+          }
+          // 自動保存
+          this.saveToLocalStorage();
+        }
+
+        /**
+         * 性別を一括設定（女性のみ）
+         */
+        setAllFemale() {
+          const playerCount = parseInt(this.playerCountSelect.value) || 0;
+          for (let i = 0; i < playerCount; i++) {
+            const radio = document.getElementById(`gender_${i}_F`);
+            if (radio) {
+              radio.checked = true;
+              // カード背景色をピンク系に変更
+              const card = document.getElementById(`card_${i}`);
+              if (card) {
+                card.style.background = "#FFEEF5";
+                card.style.borderColor = "#FFB6D9";
+              }
+            }
+          }
+          // 自動保存
+          this.saveToLocalStorage();
+        }
+
+        /**
+         * 性別を一括設定（交互）
+         */
+        setAlternateGender() {
+          const playerCount = parseInt(this.playerCountSelect.value) || 0;
+          for (let i = 0; i < playerCount; i++) {
+            const isMale = i % 2 === 0;
+            const radio = isMale
+              ? document.getElementById(`gender_${i}_M`)
+              : document.getElementById(`gender_${i}_F`);
+            if (radio) {
+              radio.checked = true;
+              // カード背景色を性別に応じて変更
+              const card = document.getElementById(`card_${i}`);
+              if (card) {
+                if (isMale) {
+                  card.style.background = "#E3F2FD";
+                  card.style.borderColor = "#90CAF9";
+                } else {
+                  card.style.background = "#FFEEF5";
+                  card.style.borderColor = "#FFB6D9";
+                }
+              }
+            }
+          }
+          // 自動保存
+          this.saveToLocalStorage();
         }
 
         bindEvents() {
@@ -2167,9 +3184,21 @@
             this.downloadImage();
           });
 
+          // 試合形式が変更されたら対戦方式の表示を制御
+          this.matchFormatRadios.forEach((radio) => {
+            radio.addEventListener("change", () => {
+              this.updateMatchSubTypeOptions();
+            });
+          });
+
           // コート数が変更されたら参加人数の選択肢を更新
           this.courtCountSelect.addEventListener("change", () => {
             this.updatePlayerCountOptions();
+          });
+
+          // 対戦方式が変更されたら性別入力フィールドの表示を切り替え
+          this.matchSubTypeSelect.addEventListener("change", () => {
+            this.toggleGenderInput();
           });
 
           // 参加者名入力時に人数を表示
@@ -2180,6 +3209,8 @@
           // 参加人数選択時にも警告チェック
           this.playerCountSelect.addEventListener("change", () => {
             this.updateParticipantCount();
+            // 参加人数が変更されたら性別チェックボックスも更新
+            this.updateGenderCheckboxes();
           });
         }
 
@@ -2217,6 +3248,11 @@
             this.participantCount.style.fontWeight = "normal";
             this.participantCount.style.padding = "0";
           }
+
+          // ミックス優先モードの場合はチェックボックスも更新
+          if (this.matchSubTypeSelect.value === "mixed") {
+            this.updateGenderCheckboxes();
+          }
         }
 
         updatePlayerCountOptions() {
@@ -2253,6 +3289,80 @@
           } else {
             // 最小人数を自動選択
             this.playerCountSelect.value = minPlayers;
+          }
+        }
+
+        updateGenderCheckboxes() {
+          const playerCount = parseInt(this.playerCountSelect.value);
+          if (!playerCount) {
+            this.genderCheckboxes.innerHTML =
+              '<p style="color: #999;">※参加人数を先に選択してください</p>';
+            return;
+          }
+
+          // 参加者名を取得
+          const text = this.participantsInput.value;
+          const inputNames = text
+            .split("\n")
+            .map((line) => line.trim())
+            .filter((line) => line.length > 0);
+
+          // チェックボックスを生成
+          let html = "";
+          for (let i = 0; i < playerCount; i++) {
+            const playerName = inputNames[i] || `プレイヤー${i + 1}`;
+            const label = `${i + 1}. ${playerName}`;
+
+            // 現在の選択状態を保持
+            const currentM = document.getElementById(`gender_${i}_M`);
+            const currentF = document.getElementById(`gender_${i}_F`);
+            const checkedM = currentM && currentM.checked ? "checked" : "";
+            const checkedF = currentF && currentF.checked ? "checked" : "";
+            const defaultChecked = !checkedM && !checkedF ? "checked" : "";
+
+            // デフォルトでは男性が選択されているため、カード全体の背景色を青系に
+            const cardBgColor = checkedF ? "#FFEEF5" : "#E3F2FD";
+            const cardBorderColor = checkedF ? "#FFB6D9" : "#90CAF9";
+
+            html += `
+              <div id="card_${i}" style="border: 2px solid ${cardBorderColor}; border-radius: 8px; padding: 10px; background: ${cardBgColor}; transition: all 0.3s;">
+                <div style="font-weight: 600; margin-bottom: 8px; color: #333;">${label}</div>
+                <div style="display: flex; gap: 15px; justify-content: center;">
+                  <label style="display: flex; align-items: center; cursor: pointer;">
+                    <input type="radio" name="gender_${i}" id="gender_${i}_M" value="M" ${
+              checkedM || defaultChecked
+            } style="margin-right: 5px;" onchange="document.getElementById('card_${i}').style.background='#E3F2FD'; document.getElementById('card_${i}').style.borderColor='#90CAF9';">
+                    <span style="font-weight: 500;">👨 男性</span>
+                  </label>
+                  <label style="display: flex; align-items: center; cursor: pointer;">
+                    <input type="radio" name="gender_${i}" id="gender_${i}_F" value="F" ${checkedF} style="margin-right: 5px;" onchange="document.getElementById('card_${i}').style.background='#FFEEF5'; document.getElementById('card_${i}').style.borderColor='#FFB6D9';">
+                    <span style="font-weight: 500;">👩 女性</span>
+                  </label>
+                </div>
+              </div>
+            `;
+          }
+
+          this.genderCheckboxes.innerHTML = html;
+        }
+
+        toggleGenderInput() {
+          const selectedFormat = Array.from(this.matchFormatRadios).find(
+            (radio) => radio.checked
+          )?.value;
+          const isMixed = this.matchSubTypeSelect.value === "mixed";
+
+          // 試合形式「ダブルス(ミックス優先)」が選ばれている場合は、対戦方式に関わらず性別フィールドを表示
+          const isDoublesWithMixed = selectedFormat === "doubles-mixed";
+          const shouldShowGender = isDoublesWithMixed || isMixed;
+
+          this.genderCheckboxGroup.style.display = shouldShowGender
+            ? "block"
+            : "none";
+
+          // 性別フィールドを表示する場合にチェックボックスを更新
+          if (shouldShowGender) {
+            this.updateGenderCheckboxes();
           }
         }
 
@@ -2375,15 +3485,17 @@
         }
 
         parseParticipants(text, playerCount) {
-          const names = text
+          const lines = text
             .split("\n")
             .map((line) => line.trim())
             .filter((line) => line.length > 0);
 
           // 参加者名が入力されていない場合は番号のみで生成
-          if (names.length === 0) {
+          if (lines.length === 0) {
             return Array.from({ length: playerCount }, (_, i) => String(i + 1));
           }
+
+          const names = [...lines];
 
           // 入力された名前を使用し、不足分は番号で補完
           if (names.length < playerCount) {
@@ -2408,11 +3520,48 @@
           return "doubles";
         }
 
+        /**
+         * デバッグログを表示
+         */
+        generateDebugTable(rotation, title) {
+          if (!isDebugMode()) {
+            return;
+          }
+
+          const container = document.getElementById("debugTableContainer");
+          let html = `
+            <div style="margin-bottom: 20px; border: 2px solid #ff6b6b; border-radius: 8px; padding: 15px; background: #ffe5e5;">
+              <h3 style="color: #c33; margin-bottom: 10px; font-size: 16px;">🔍 デバッグモード - 生成ログ</h3>
+          `;
+
+          // デバッグログを表示
+          if (rotation.debugLogs && rotation.debugLogs.length > 0) {
+            html += `
+              <div style="border: 1px solid #ffb6d9; border-radius: 6px; padding: 10px; background: #fff; max-height: 400px; overflow-y: auto;">
+                <pre style="margin: 0; font-size: 12px; font-family: 'Monaco', 'Courier New', monospace; color: #333; white-space: pre-wrap; word-break: break-word;">
+            `;
+
+            // ログを表示（改行を保持）
+            rotation.debugLogs.forEach((log) => {
+              html += log + "\n";
+            });
+
+            html += `
+                </pre>
+              </div>
+            `;
+          }
+
+          html += `</div>`;
+          container.innerHTML = html;
+        }
+
         async generateRotation() {
           const title = this.titleInput.value.trim();
           const playerCount = parseInt(this.playerCountSelect.value);
           const courtCount = parseInt(this.courtCountSelect.value);
           const roundCount = parseInt(this.roundCountSelect.value);
+          const matchSubType = this.matchSubTypeSelect.value;
           const participantsText = this.participantsInput.value;
 
           if (!playerCount) {
@@ -2431,7 +3580,26 @@
             playerCount
           );
 
-          // 参加者名の数チェックはupdateParticipantCountで実施済み
+          // ミックス優先の場合はチェックボックスから性別を取得
+          let genders = null;
+          if (matchSubType === "mixed") {
+            genders = [];
+            for (let i = 0; i < playerCount; i++) {
+              const mRadio = document.getElementById(`gender_${i}_M`);
+              const fRadio = document.getElementById(`gender_${i}_F`);
+
+              if (mRadio && mRadio.checked) {
+                genders.push("M");
+              } else if (fRadio && fRadio.checked) {
+                genders.push("F");
+              } else {
+                this.showError(
+                  `${i + 1}番目のプレイヤーの性別が選択されていません。`
+                );
+                return;
+              }
+            }
+          }
 
           if (playerCount < 4) {
             this.showError("ダブルスには最低4人必要です");
@@ -2447,10 +3615,15 @@
               participants,
               courtCount,
               "doubles",
-              roundCount
+              roundCount,
+              matchSubType,
+              genders
             );
             this.currentCanvas = new RotationCanvas(rotation, title, "doubles");
             this.currentCanvas.draw();
+
+            // デバッグモードの場合、テーブル形式の対戦表を生成
+            this.generateDebugTable(rotation, title);
 
             this.resultSection.classList.add("show");
 
@@ -2499,8 +3672,9 @@
       }
 
       // アプリケーション初期化
+      let uiController;
       document.addEventListener("DOMContentLoaded", () => {
-        new UIController();
+        uiController = new UIController();
       });
     </script>
   </body>
