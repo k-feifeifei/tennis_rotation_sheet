@@ -381,7 +381,7 @@ class RotationGenerator {
       .filter((p) => !usedInRound.has(p))
       .map((player) => {
         const playCountScore =
-          -this.playCount[player] * SCORING_WEIGHTS.POS1_PLAY_COUNT;
+          this.playCount[player] * SCORING_WEIGHTS.POS1_PLAY_COUNT;
         const consecutiveRestScore =
           this.consecutiveRestCount[player] *
           SCORING_WEIGHTS.POS1_CONSECUTIVE_REST;
@@ -446,11 +446,11 @@ class RotationGenerator {
         const partnerCount = this.partnerHistory[pos1Player][player];
         const matchCount = this.matchHistory[pos1Player][player];
         const partnerHistoryScore =
-          -partnerCount * SCORING_WEIGHTS.POS2_PARTNER_HISTORY;
+          partnerCount * SCORING_WEIGHTS.POS2_PARTNER_HISTORY;
         const matchHistoryScore =
-          -matchCount * SCORING_WEIGHTS.POS2_MATCH_HISTORY;
+          matchCount * SCORING_WEIGHTS.POS2_MATCH_HISTORY;
         const playCountScore =
-          -this.playCount[player] * SCORING_WEIGHTS.POS2_PLAY_COUNT;
+          this.playCount[player] * SCORING_WEIGHTS.POS2_PLAY_COUNT;
         const consecutiveRestScore =
           this.consecutiveRestCount[player] *
           SCORING_WEIGHTS.POS2_CONSECUTIVE_REST;
@@ -544,15 +544,15 @@ class RotationGenerator {
         const pos2MatchCount = this.matchHistory[pos2Player][player];
 
         const pos1PartnerHistoryScore =
-          -pos1PartnerCount * SCORING_WEIGHTS.POS3_PARTNER_HISTORY;
+          pos1PartnerCount * SCORING_WEIGHTS.POS3_PARTNER_HISTORY;
         const pos1MatchHistoryScore =
-          -pos1MatchCount * SCORING_WEIGHTS.POS3_MATCH_HISTORY;
+          pos1MatchCount * SCORING_WEIGHTS.POS3_MATCH_HISTORY;
         const pos2PartnerHistoryScore =
-          -pos2PartnerCount * SCORING_WEIGHTS.POS3_PARTNER_HISTORY;
+          pos2PartnerCount * SCORING_WEIGHTS.POS3_PARTNER_HISTORY;
         const pos2MatchHistoryScore =
-          -pos2MatchCount * SCORING_WEIGHTS.POS3_MATCH_HISTORY;
+          pos2MatchCount * SCORING_WEIGHTS.POS3_MATCH_HISTORY;
         const playCountScore =
-          -this.playCount[player] * SCORING_WEIGHTS.POS3_PLAY_COUNT;
+          this.playCount[player] * SCORING_WEIGHTS.POS3_PLAY_COUNT;
         const consecutiveRestScore =
           this.consecutiveRestCount[player] *
           SCORING_WEIGHTS.POS3_CONSECUTIVE_REST;
@@ -654,19 +654,19 @@ class RotationGenerator {
         const pos3MatchCount = this.matchHistory[pos3Player][player];
 
         const pos1PartnerHistoryScore =
-          -pos1PartnerCount * SCORING_WEIGHTS.POS4_PARTNER_HISTORY;
+          pos1PartnerCount * SCORING_WEIGHTS.POS4_PARTNER_HISTORY;
         const pos1MatchHistoryScore =
-          -pos1MatchCount * SCORING_WEIGHTS.POS4_MATCH_HISTORY;
+          pos1MatchCount * SCORING_WEIGHTS.POS4_MATCH_HISTORY;
         const pos2PartnerHistoryScore =
-          -pos2PartnerCount * SCORING_WEIGHTS.POS4_PARTNER_HISTORY;
+          pos2PartnerCount * SCORING_WEIGHTS.POS4_PARTNER_HISTORY;
         const pos2MatchHistoryScore =
-          -pos2MatchCount * SCORING_WEIGHTS.POS4_MATCH_HISTORY;
+          pos2MatchCount * SCORING_WEIGHTS.POS4_MATCH_HISTORY;
         const pos3PartnerHistoryScore =
-          -pos3PartnerCount * SCORING_WEIGHTS.POS4_PARTNER_HISTORY;
+          pos3PartnerCount * SCORING_WEIGHTS.POS4_PARTNER_HISTORY;
         const pos3MatchHistoryScore =
-          -pos3MatchCount * SCORING_WEIGHTS.POS4_MATCH_HISTORY;
+          pos3MatchCount * SCORING_WEIGHTS.POS4_MATCH_HISTORY;
         const playCountScore =
-          -this.playCount[player] * SCORING_WEIGHTS.POS4_PLAY_COUNT;
+          this.playCount[player] * SCORING_WEIGHTS.POS4_PLAY_COUNT;
         const consecutiveRestScore =
           this.consecutiveRestCount[player] *
           SCORING_WEIGHTS.POS4_CONSECUTIVE_REST;

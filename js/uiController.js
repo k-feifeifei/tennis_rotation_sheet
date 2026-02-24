@@ -84,6 +84,12 @@ class UIController {
       genders: this.getGenderSelections(),
       timestamp: Date.now(), // 保存時刻を記録（ミリ秒単位）
     };
+
+    // カスタマイズ方式の場合はカスタム重みも保存
+    if (this.matchSubTypeSelect.value === "custom") {
+      data.customWeights = this.getCustomWeights();
+    }
+
     localStorage.setItem("tennisRotationData", JSON.stringify(data));
   }
 
@@ -140,6 +146,10 @@ class UIController {
         if (saved.genders) {
           setTimeout(() => this.setGenderSelections(saved.genders), 0);
         }
+        // カスタム重みを復元
+        if (saved.customWeights) {
+          setTimeout(() => this.setCustomWeights(saved.customWeights), 0);
+        }
       } catch (e) {
         console.error("Failed to load from localStorage:", e);
         localStorage.removeItem("tennisRotationData"); // エラー時は削除
@@ -173,6 +183,32 @@ class UIController {
     this.matchFormatRadios.forEach((radio) => {
       radio.addEventListener("change", () => this.saveToLocalStorage());
     });
+
+    // カスタム重みの変更を検知して自動保存
+    const customWeightKeys = [
+      "POS1_PLAY_COUNT",
+      "POS1_CONSECUTIVE_REST",
+      "POS2_PARTNER_HISTORY",
+      "POS2_MATCH_HISTORY",
+      "POS2_PLAY_COUNT",
+      "POS2_CONSECUTIVE_REST",
+      "POS3_PLAY_COUNT",
+      "POS3_CONSECUTIVE_REST",
+      "POS3_PARTNER_HISTORY",
+      "POS3_MATCH_HISTORY",
+      "POS4_PLAY_COUNT",
+      "POS4_CONSECUTIVE_REST",
+      "POS4_PARTNER_HISTORY",
+      "POS4_MATCH_HISTORY",
+      "MIXED_BONUS",
+    ];
+
+    customWeightKeys.forEach((key) => {
+      const input = document.getElementById(`custom_${key}`);
+      if (input) {
+        input.addEventListener("change", () => this.saveToLocalStorage());
+      }
+    });
   }
 
   /**
@@ -190,8 +226,8 @@ class UIController {
       // ダブルス(ミックス優先)が選択されている場合：男女混合重視型を表示して性別入力を表示
       if (mixedOption) {
         mixedOption.style.display = "";
-        // 男女混合重視型をデフォルト選択
-        this.matchSubTypeSelect.value = "mixed";
+        // バランス型をデフォルト選択
+        this.matchSubTypeSelect.value = "balanced";
       }
       if (mixedExplanation) {
         mixedExplanation.style.display = "";
@@ -219,6 +255,56 @@ class UIController {
         this.genderCheckboxGroup.style.display = "none";
       }
     }
+
+    // カスタマイズ方式の表示/非表示を制御
+    this.toggleCustomWeightsDisplay();
+  }
+
+  /**
+   * カスタマイズ方式の重み設定フォームの表示/非表示を制御
+   */
+  toggleCustomWeightsDisplay() {
+    const customWeightsGroup = document.getElementById("customWeightsGroup");
+    const selectedSubType = this.matchSubTypeSelect.value;
+
+    if (selectedSubType === "custom" && customWeightsGroup) {
+      customWeightsGroup.style.display = "block";
+    } else if (customWeightsGroup) {
+      customWeightsGroup.style.display = "none";
+    }
+  }
+
+  /**
+   * カスタマイズ方式で設定された重みを取得
+   */
+  getCustomWeights() {
+    const weights = {};
+    const weightKeys = [
+      "POS1_PLAY_COUNT",
+      "POS1_CONSECUTIVE_REST",
+      "POS2_PARTNER_HISTORY",
+      "POS2_MATCH_HISTORY",
+      "POS2_PLAY_COUNT",
+      "POS2_CONSECUTIVE_REST",
+      "POS3_PLAY_COUNT",
+      "POS3_CONSECUTIVE_REST",
+      "POS3_PARTNER_HISTORY",
+      "POS3_MATCH_HISTORY",
+      "POS4_PLAY_COUNT",
+      "POS4_CONSECUTIVE_REST",
+      "POS4_PARTNER_HISTORY",
+      "POS4_MATCH_HISTORY",
+      "MIXED_BONUS",
+    ];
+
+    weightKeys.forEach((key) => {
+      const input = document.getElementById(`custom_${key}`);
+      if (input) {
+        weights[key] = parseFloat(input.value) || 0;
+      }
+    });
+
+    return weights;
   }
 
   /**
@@ -267,6 +353,19 @@ class UIController {
             card.style.borderColor = "#FFB6D9";
           }
         }
+      }
+    });
+  }
+
+  /**
+   * カスタム重みを入力フィールドに設定
+   */
+  setCustomWeights(weights) {
+    if (!weights) return;
+    Object.keys(weights).forEach((key) => {
+      const input = document.getElementById(`custom_${key}`);
+      if (input) {
+        input.value = weights[key];
       }
     });
   }
@@ -391,6 +490,7 @@ class UIController {
     // 対戦方式が変更されたら性別入力フィールドの表示を切り替え
     this.matchSubTypeSelect.addEventListener("change", () => {
       this.toggleGenderInput();
+      this.toggleCustomWeightsDisplay();
     });
 
     // 参加者名入力時に人数を表示
@@ -790,6 +890,15 @@ class UIController {
       return;
     }
 
+    // カスタマイズ方式の場合は、カスタム重みを反映させる
+    if (matchSubType === "custom") {
+      const customWeights = this.getCustomWeights();
+      SCORING_WEIGHTS_PRESETS.custom = {
+        ...SCORING_WEIGHTS_PRESETS.balanced,
+        ...customWeights,
+      };
+    }
+
     this.showLoading(true);
 
     await new Promise((resolve) => setTimeout(resolve, 500));
@@ -861,6 +970,14 @@ class UIController {
     this.resultSection.classList.remove("show");
     this.currentCanvas = null;
     this.updatePlayerCountOptions(); // フォームリセット時に参加人数オプションを再設定
+
+    // カスタム重みをリセット
+    const defaultCustomWeights = SCORING_WEIGHTS_PRESETS.balanced;
+    this.setCustomWeights(defaultCustomWeights);
+
+    // ローカルストレージをクリア
+    localStorage.removeItem("tennisRotationData");
+
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 }

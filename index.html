@@ -346,6 +346,7 @@
                 <option value="mixed" style="display: none" id="mixedOption">
                   男女混合重視型
                 </option>
+                <option value="custom">カスタマイズ方式</option>
               </select>
               <div class="form-help">
                 ※各方式の説明：
@@ -354,6 +355,298 @@
                 <span id="mixedExplanation" style="display: none">
                   <br />男女混合重視型：男女混合ペアを優先
                 </span>
+                <br />カスタマイズ方式：重みを手動調整
+              </div>
+            </div>
+
+            <!-- カスタマイズ方式用の設定フォーム -->
+            <div
+              id="customWeightsGroup"
+              style="
+                display: none;
+                margin-top: 15px;
+                padding: 15px;
+                background: #f5f5f5;
+                border-radius: 8px;
+                border-left: 4px solid #667eea;
+              "
+            >
+              <div style="font-weight: 600; margin-bottom: 10px; color: #333">
+                ⚙️ カスタマイズ重み設定
+              </div>
+              <div style="font-size: 12px; color: #666; margin-bottom: 12px">
+                ※各重みを調整して、ローテーション方式をカスタマイズできます
+              </div>
+
+              <!-- ポジション1 -->
+              <div style="margin-bottom: 12px">
+                <div
+                  style="
+                    font-weight: 500;
+                    font-size: 12px;
+                    color: #555;
+                    margin-bottom: 5px;
+                  "
+                >
+                  ポジション1
+                </div>
+                <div
+                  style="
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 8px;
+                    font-size: 11px;
+                  "
+                >
+                  <div>
+                    <label
+                      >出場回数:
+                      <input
+                        type="number"
+                        id="custom_POS1_PLAY_COUNT"
+                        value="-100"
+                        step="1"
+                        style="width: 50px"
+                    /></label>
+                  </div>
+                  <div>
+                    <label
+                      >連続待機:
+                      <input
+                        type="number"
+                        id="custom_POS1_CONSECUTIVE_REST"
+                        value="50"
+                        step="1"
+                        style="width: 50px"
+                    /></label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ポジション2 -->
+              <div style="margin-bottom: 12px">
+                <div
+                  style="
+                    font-weight: 500;
+                    font-size: 12px;
+                    color: #555;
+                    margin-bottom: 5px;
+                  "
+                >
+                  ポジション2
+                </div>
+                <div
+                  style="
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 8px;
+                    font-size: 11px;
+                  "
+                >
+                  <div>
+                    <label
+                      >ペア回数:
+                      <input
+                        type="number"
+                        id="custom_POS2_PARTNER_HISTORY"
+                        value="-40"
+                        step="1"
+                        style="width: 50px"
+                    /></label>
+                  </div>
+                  <div>
+                    <label
+                      >対戦回数:
+                      <input
+                        type="number"
+                        id="custom_POS2_MATCH_HISTORY"
+                        value="-10"
+                        step="1"
+                        style="width: 50px"
+                    /></label>
+                  </div>
+                  <div>
+                    <label
+                      >出場回数:
+                      <input
+                        type="number"
+                        id="custom_POS2_PLAY_COUNT"
+                        value="-80"
+                        step="1"
+                        style="width: 50px"
+                    /></label>
+                  </div>
+                  <div>
+                    <label
+                      >連続待機:
+                      <input
+                        type="number"
+                        id="custom_POS2_CONSECUTIVE_REST"
+                        value="40"
+                        step="1"
+                        style="width: 50px"
+                    /></label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ポジション3 -->
+              <div style="margin-bottom: 12px">
+                <div
+                  style="
+                    font-weight: 500;
+                    font-size: 12px;
+                    color: #555;
+                    margin-bottom: 5px;
+                  "
+                >
+                  ポジション3
+                </div>
+                <div
+                  style="
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 8px;
+                    font-size: 11px;
+                  "
+                >
+                  <div>
+                    <label
+                      >ペア回数:
+                      <input
+                        type="number"
+                        id="custom_POS3_PARTNER_HISTORY"
+                        value="-30"
+                        step="1"
+                        style="width: 50px"
+                    /></label>
+                  </div>
+                  <div>
+                    <label
+                      >対戦回数:
+                      <input
+                        type="number"
+                        id="custom_POS3_MATCH_HISTORY"
+                        value="-20"
+                        step="1"
+                        style="width: 50px"
+                    /></label>
+                  </div>
+                  <div>
+                    <label
+                      >出場回数:
+                      <input
+                        type="number"
+                        id="custom_POS3_PLAY_COUNT"
+                        value="-80"
+                        step="1"
+                        style="width: 50px"
+                    /></label>
+                  </div>
+                  <div>
+                    <label
+                      >連続待機:
+                      <input
+                        type="number"
+                        id="custom_POS3_CONSECUTIVE_REST"
+                        value="40"
+                        step="1"
+                        style="width: 50px"
+                    /></label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ポジション4 -->
+              <div style="margin-bottom: 12px">
+                <div
+                  style="
+                    font-weight: 500;
+                    font-size: 12px;
+                    color: #555;
+                    margin-bottom: 5px;
+                  "
+                >
+                  ポジション4
+                </div>
+                <div
+                  style="
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 8px;
+                    font-size: 11px;
+                  "
+                >
+                  <div>
+                    <label
+                      >ペア回数:
+                      <input
+                        type="number"
+                        id="custom_POS4_PARTNER_HISTORY"
+                        value="-30"
+                        step="1"
+                        style="width: 50px"
+                    /></label>
+                  </div>
+                  <div>
+                    <label
+                      >対戦回数:
+                      <input
+                        type="number"
+                        id="custom_POS4_MATCH_HISTORY"
+                        value="-20"
+                        step="1"
+                        style="width: 50px"
+                    /></label>
+                  </div>
+                  <div>
+                    <label
+                      >出場回数:
+                      <input
+                        type="number"
+                        id="custom_POS4_PLAY_COUNT"
+                        value="-80"
+                        step="1"
+                        style="width: 50px"
+                    /></label>
+                  </div>
+                  <div>
+                    <label
+                      >連続待機:
+                      <input
+                        type="number"
+                        id="custom_POS4_CONSECUTIVE_REST"
+                        value="40"
+                        step="1"
+                        style="width: 50px"
+                    /></label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 男女混合ボーナス -->
+              <div style="margin-bottom: 8px">
+                <div
+                  style="
+                    font-weight: 500;
+                    font-size: 12px;
+                    color: #555;
+                    margin-bottom: 5px;
+                  "
+                >
+                  その他
+                </div>
+                <div style="font-size: 11px">
+                  <label
+                    >男女混合ボーナス:
+                    <input
+                      type="number"
+                      id="custom_MIXED_BONUS"
+                      value="20"
+                      step="1"
+                      style="width: 50px"
+                  /></label>
+                </div>
               </div>
             </div>
           </div>

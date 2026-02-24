@@ -36,36 +36,36 @@ const SCORING_WEIGHTS = {
 
   // ポジション1：主役プレイヤー選択
   // 評価基準：出場回数、連続待機回数、プレイヤー番号
-  POS1_PLAY_COUNT: 120, // 出場回数の重み
-  POS1_CONSECUTIVE_REST: 20, // 連続待機回数の重み（マイナス）
+  POS1_PLAY_COUNT: -120, // 出場回数の重み（負値：少ないほど高評価）
+  POS1_CONSECUTIVE_REST: 20, // 連続待機回数の重み（正値：多いほど高評価）
   POS1_PLAYER_NUMBER: -0.01, // プレイヤー番号の重み（負値：番号が小さいほど高評価）
 
   // ポジション2：ポジション1のペアプレイヤー選択
   // 評価基準：ポジション1との関係（ペア・対戦回数）、出場回数、連続待機回数、プレイヤー番号
-  POS2_PARTNER_HISTORY: 60, // ポジション1とのペア回数の重み
-  POS2_MATCH_HISTORY: 40, // ポジション1との対戦回数の重み
-  POS2_PLAY_COUNT: 80, // 出場回数の重み
-  POS2_CONSECUTIVE_REST: 15, // 連続待機回数の重み
+  POS2_PARTNER_HISTORY: -60, // ポジション1とのペア回数の重み（負値：少ないほど高評価）
+  POS2_MATCH_HISTORY: -40, // ポジション1との対戦回数の重み（負値：少ないほど高評価）
+  POS2_PLAY_COUNT: -80, // 出場回数の重み（負値：少ないほど高評価）
+  POS2_CONSECUTIVE_REST: 15, // 連続待機回数の重み（正値：多いほど高評価）
   POS2_PLAYER_NUMBER: -0.01, // プレイヤー番号の重み（負値：番号が小さいほど高評価）
 
   // ポジション3：対戦主役プレイヤー選択
   // 評価基準：ポジション1/2との関係、出場回数、連続待機回数、プレイヤー番号
-  POS3_PARTNER_HISTORY: 50, // ペア回数の重み（ポジション1・2の相手との）
-  POS3_MATCH_HISTORY: 35, // 対戦回数の重み（ポジション1・2の相手との）
-  POS3_PLAY_COUNT: 70, // 出場回数の重み
-  POS3_CONSECUTIVE_REST: 15, // 連続待機回数の重み
+  POS3_PARTNER_HISTORY: -50, // ペア回数の重み（負値：少ないほど高評価）
+  POS3_MATCH_HISTORY: -35, // 対戦回数の重み（負値：少ないほど高評価）
+  POS3_PLAY_COUNT: -70, // 出場回数の重み（負値：少ないほど高評価）
+  POS3_CONSECUTIVE_REST: 15, // 連続待機回数の重み（正値：多いほど高評価）
   POS3_PLAYER_NUMBER: -0.01, // プレイヤー番号の重み（負値：番号が小さいほど高評価）
 
   // ポジション4：ポジション3のペアプレイヤー選択
   // 評価基準：ポジション1/2/3との関係、出場回数、連続待機回数、プレイヤー番号
-  POS4_PARTNER_HISTORY: 50, // ペア回数の重み（ポジション1/2/3の相手との）
-  POS4_MATCH_HISTORY: 35, // 対戦回数の重み（ポジション1/2/3の相手との）
-  POS4_PLAY_COUNT: 70, // 出場回数の重み
-  POS4_CONSECUTIVE_REST: 15, // 連続待機回数の重み
+  POS4_PARTNER_HISTORY: -50, // ペア回数の重み（負値：少ないほど高評価）
+  POS4_MATCH_HISTORY: -35, // 対戦回数の重み（負値：少ないほど高評価）
+  POS4_PLAY_COUNT: -70, // 出場回数の重み（負値：少ないほど高評価）
+  POS4_CONSECUTIVE_REST: 15, // 連続待機回数の重み（正値：多いほど高評価）
   POS4_PLAYER_NUMBER: -0.01, // プレイヤー番号の重み（負値：番号が小さいほど高評価）
 
   // ========== 男女混合重視用の追加重み ==========
-  MIXED_BONUS: 100, // 男女混合ペアのボーナス
+  MIXED_BONUS: 15, // 男女混合ペアのボーナス（正値：男女混合は高評価）
 };
 
 // ========== 対戦方式別の重み設定プリセット ==========
@@ -73,74 +73,110 @@ const SCORING_WEIGHTS_PRESETS = {
   // バランス型（推奨）
   // 出場機会の公平性と多様性のバランスを重視
   balanced: {
-    POS1_PLAY_COUNT: 120,
-    POS1_CONSECUTIVE_REST: 20,
+    POS1_PLAY_COUNT: -100,
+    POS1_CONSECUTIVE_REST: 50,
     POS1_PLAYER_NUMBER: -0.01,
-    POS2_PARTNER_HISTORY: 60,
-    POS2_MATCH_HISTORY: 40,
-    POS2_PLAY_COUNT: 80,
-    POS2_CONSECUTIVE_REST: 15,
+
+    POS2_PARTNER_HISTORY: -40,
+    POS2_MATCH_HISTORY: -10,
+    POS2_PLAY_COUNT: -80,
+    POS2_CONSECUTIVE_REST: 40,
     POS2_PLAYER_NUMBER: -0.01,
-    POS3_PARTNER_HISTORY: 50,
-    POS3_MATCH_HISTORY: 35,
-    POS3_PLAY_COUNT: 70,
-    POS3_CONSECUTIVE_REST: 15,
+
+    POS3_PLAY_COUNT: -80,
+    POS3_CONSECUTIVE_REST: 40,
+    POS3_PARTNER_HISTORY: -30,
+    POS3_MATCH_HISTORY: -20,
     POS3_PLAYER_NUMBER: -0.01,
-    POS4_PARTNER_HISTORY: 50,
-    POS4_MATCH_HISTORY: 35,
-    POS4_PLAY_COUNT: 70,
-    POS4_CONSECUTIVE_REST: 15,
-    POS4_PLAYER_NUMBER: -0.01,
-    MIXED_BONUS: 100,
+
+    POS4_PLAY_COUNT: -80,
+    POS4_CONSECUTIVE_REST: 40,
+    POS4_PARTNER_HISTORY: -30,
+    POS4_MATCH_HISTORY: -20,
+
+    MIXED_BONUS: 20,
   },
 
   // 多様性重視型
   // ペアと対戦の組み合わせバリエーションを最優先
-  // 出場回数、ペア履歴、対戦履歴をほぼ同じ重みで評価
   diversity: {
-    POS1_PLAY_COUNT: 100,
-    POS1_CONSECUTIVE_REST: 20,
+    POS1_PLAY_COUNT: -60,
+    POS1_CONSECUTIVE_REST: 30,
     POS1_PLAYER_NUMBER: -0.01,
-    POS2_PARTNER_HISTORY: 100,
-    POS2_MATCH_HISTORY: 100,
-    POS2_PLAY_COUNT: 100,
-    POS2_CONSECUTIVE_REST: 15,
+
+    POS2_PARTNER_HISTORY: -200,
+    POS2_MATCH_HISTORY: -50,
+    POS2_PLAY_COUNT: -50,
+    POS2_CONSECUTIVE_REST: 20,
     POS2_PLAYER_NUMBER: -0.01,
-    POS3_PARTNER_HISTORY: 100,
-    POS3_MATCH_HISTORY: 100,
-    POS3_PLAY_COUNT: 100,
-    POS3_CONSECUTIVE_REST: 15,
+
+    POS3_PARTNER_HISTORY: -100,
+    POS3_MATCH_HISTORY: -150,
+    POS3_PLAY_COUNT: -50,
+    POS3_CONSECUTIVE_REST: 20,
     POS3_PLAYER_NUMBER: -0.01,
-    POS4_PARTNER_HISTORY: 100,
-    POS4_MATCH_HISTORY: 100,
-    POS4_PLAY_COUNT: 100,
-    POS4_CONSECUTIVE_REST: 15,
-    POS4_PLAYER_NUMBER: -0.01,
-    MIXED_BONUS: 100,
+
+    POS4_PARTNER_HISTORY: -100,
+    POS4_MATCH_HISTORY: -150,
+    POS4_PLAY_COUNT: -50,
+    POS4_CONSECUTIVE_REST: 20,
+
+    MIXED_BONUS: 20,
   },
 
   // 男女混合重視型
   // 男女混合ペアの出場機会を優先的に増やす
   mixed: {
-    POS1_PLAY_COUNT: 120,
-    POS1_CONSECUTIVE_REST: 20,
+    POS1_PLAY_COUNT: -100,
+    POS1_CONSECUTIVE_REST: 50,
     POS1_PLAYER_NUMBER: -0.01,
-    POS2_PARTNER_HISTORY: 60,
-    POS2_MATCH_HISTORY: 40,
-    POS2_PLAY_COUNT: 80,
-    POS2_CONSECUTIVE_REST: 15,
+
+    POS2_PARTNER_HISTORY: -30,
+    POS2_MATCH_HISTORY: -10,
+    POS2_PLAY_COUNT: -70,
+    POS2_CONSECUTIVE_REST: 30,
     POS2_PLAYER_NUMBER: -0.01,
-    POS3_PARTNER_HISTORY: 50,
-    POS3_MATCH_HISTORY: 35,
-    POS3_PLAY_COUNT: 70,
-    POS3_CONSECUTIVE_REST: 15,
+
+    POS3_PLAY_COUNT: -70,
+    POS3_CONSECUTIVE_REST: 30,
+    POS3_PARTNER_HISTORY: -20,
+    POS3_MATCH_HISTORY: -10,
     POS3_PLAYER_NUMBER: -0.01,
-    POS4_PARTNER_HISTORY: 50,
-    POS4_MATCH_HISTORY: 35,
-    POS4_PLAY_COUNT: 70,
-    POS4_CONSECUTIVE_REST: 15,
+
+    POS4_PLAY_COUNT: -70,
+    POS4_CONSECUTIVE_REST: 30,
+    POS4_PARTNER_HISTORY: -20,
+    POS4_MATCH_HISTORY: -10,
+
+    MIXED_BONUS: 100,
+  },
+
+  // カスタマイズ方式
+  // バランス型をベースに、ユーザーが重みを手動調整
+  custom: {
+    POS1_PLAY_COUNT: -100,
+    POS1_CONSECUTIVE_REST: 50,
+    POS1_PLAYER_NUMBER: -0.01,
+
+    POS2_PARTNER_HISTORY: -40,
+    POS2_MATCH_HISTORY: -10,
+    POS2_PLAY_COUNT: -80,
+    POS2_CONSECUTIVE_REST: 40,
+    POS2_PLAYER_NUMBER: -0.01,
+
+    POS3_PLAY_COUNT: -80,
+    POS3_CONSECUTIVE_REST: 40,
+    POS3_PARTNER_HISTORY: -30,
+    POS3_MATCH_HISTORY: -20,
+    POS3_PLAYER_NUMBER: -0.01,
+
+    POS4_PLAY_COUNT: -80,
+    POS4_CONSECUTIVE_REST: 40,
+    POS4_PARTNER_HISTORY: -30,
+    POS4_MATCH_HISTORY: -20,
     POS4_PLAYER_NUMBER: -0.01,
-    MIXED_BONUS: 200, // ボーナスを大幅に増加
+
+    MIXED_BONUS: 20,
   },
 };
 
