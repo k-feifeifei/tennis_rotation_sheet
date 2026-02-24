@@ -483,7 +483,9 @@ class UIController {
         if (!isNaN(playerIndex) && !isNaN(startRound)) {
           // 重複チェック
           if (duplicateCheck.has(playerIndex)) {
-            console.warn(`警告: プレイヤー ${playerIndex + 1} が複数回除外設定されています。最初の設定のみ有効です。`);
+            console.warn(
+              `警告: プレイヤー ${playerIndex + 1} が複数回除外設定されています。最初の設定のみ有効です。`,
+            );
           } else {
             settings[playerIndex] = startRound;
             duplicateCheck.add(playerIndex);
@@ -513,7 +515,7 @@ class UIController {
       if (typeof startRound === "number" && startRound > 0) {
         // 行を追加
         this.addExcludeRow();
-        
+
         // 追加した行の値を設定
         const rows = excludeCheckboxes.querySelectorAll("[id^='excludeRow_']");
         const lastRow = rows[rows.length - 1];
@@ -527,7 +529,7 @@ class UIController {
         }
       }
     });
-    
+
     // すべての設定完了後に選択肢を更新
     this.updateExcludePlayerOptions();
   }
@@ -906,7 +908,9 @@ class UIController {
     const addPlayerRows = document.querySelectorAll("[id^='addPlayerRow_']");
     addPlayerRows.forEach((row) => {
       const existingGender = row.querySelector(".addPlayerGender");
-      const deleteButton = row.querySelector("button[onclick*='removePlayerRow']");
+      const deleteButton = row.querySelector(
+        "button[onclick*='removePlayerRow']",
+      );
 
       if (needsGender && !existingGender && deleteButton) {
         // 性別フィールドを追加
@@ -1001,7 +1005,7 @@ class UIController {
       .filter((line) => line.length > 0);
 
     const rowId = `excludeRow_${Date.now()}`;
-    
+
     // すでに選択されているプレイヤーを取得
     const selectedPlayers = this.getSelectedExcludePlayers();
 
@@ -1053,7 +1057,7 @@ class UIController {
   getSelectedExcludePlayers() {
     const excludeCheckboxes = document.getElementById("excludeCheckboxes");
     const selectedPlayers = new Set();
-    
+
     if (excludeCheckboxes) {
       const rows = excludeCheckboxes.querySelectorAll("[id^='excludeRow_']");
       rows.forEach((row) => {
@@ -1063,7 +1067,7 @@ class UIController {
         }
       });
     }
-    
+
     return selectedPlayers;
   }
 
@@ -1090,7 +1094,7 @@ class UIController {
       if (!playerSelect) return;
 
       const currentValue = playerSelect.value;
-      
+
       // 現在の選択値を保持して選択肢を再構築
       let newOptions = "";
       for (let i = 0; i < playerCount; i++) {
