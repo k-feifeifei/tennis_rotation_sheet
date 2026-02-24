@@ -24,6 +24,7 @@ class RotationGenerator {
     matchSubType = "balanced",
     genders = null,
     matchFormat = "doubles",
+    excludeSettingsMap = {},
   ) {
     this.players = players;
     this.courtCount = parseInt(courtCount);
@@ -34,6 +35,8 @@ class RotationGenerator {
     this.matchFormat = matchFormat;
     this.rounds = [];
     this.debugLogs = [];
+    this.excludedPlayers = new Set(); // 除外プレイヤーのインデックスを管理
+    this.excludeSettingsMap = excludeSettingsMap; // グランド別の除外設定: {playerIndex: [courts]}
 
     // 対戦方式に応じた重み設定を適用
     this.applyWeightsPreset(matchSubType);
@@ -120,7 +123,8 @@ class RotationGenerator {
    */
   generateDoublesRotation(playerCount, maxRounds) {
     for (let round = 0; round < maxRounds; round++) {
-      this.addLog(`\n========== 第${round + 1}ラウンド ==========`);
+      const currentRound = round + 1; // 1-based round number
+      this.addLog(`\n========== 第${currentRound}ラウンド ==========`);
       const usedInRound = new Set();
       const roundMatches = [];
 
@@ -130,6 +134,7 @@ class RotationGenerator {
           playerCount,
           usedInRound,
           court,
+          currentRound,
         );
         if (match) {
           roundMatches.push(match);
@@ -278,9 +283,20 @@ class RotationGenerator {
    * @param {number} courtIndex - コートのインデックス（0, 1, 2...）
    * @returns {Object|null} 試合オブジェクト または null（生成不可能な場合）
    */
-  generateSingleCourtMatch(playerCount, usedInRound, courtIndex) {
+  generateSingleCourtMatch(playerCount, usedInRound, courtIndex, currentRound) {
     const availablePlayers = Array.from({ length: playerCount }, (_, i) => i)
-      .filter((i) => !usedInRound.has(i))
+      .filter((i) => {
+        if (usedInRound.has(i)) return false;
+        // ラウンド別の除外設定を確認
+        if (
+          this.excludeSettingsMap[i] &&
+          typeof this.excludeSettingsMap[i] === "number" &&
+          currentRound >= this.excludeSettingsMap[i]
+        ) {
+          return false;
+        }
+        return true;
+      })
       .sort((a, b) => this.playCount[a] - this.playCount[b]);
 
     // 必要なプレイヤー数チェック（4人必要）

@@ -44,6 +44,8 @@ class UIController {
       if (this.playerCountSelect.querySelector('option[value="6"]')) {
         this.playerCountSelect.value = "6";
       }
+      // 除外設定UIを初期化
+      this.updateExcludeCheckboxes();
     }, 0);
 
     // ローカルストレージから前回の入力内容を復元
@@ -106,6 +108,7 @@ class UIController {
       matchFormat: selectedFormat,
       matchSubType: this.matchSubTypeSelect.value,
       genders: this.getGenderSelections(),
+      excludeSettings: this.getExcludeSettings(),
       timestamp: Date.now(), // 保存時刻を記録（ミリ秒単位）
     };
 
@@ -168,6 +171,7 @@ class UIController {
       this.updateParticipantCount();
       this.toggleGenderInput();
       this.updateMatchSubTypeOptions();
+      setTimeout(() => this.updateExcludeCheckboxes(), 0);
       return;
     }
 
@@ -208,6 +212,7 @@ class UIController {
         this.updateParticipantCount();
         this.toggleGenderInput();
         this.updateMatchSubTypeOptions();
+        setTimeout(() => this.updateExcludeCheckboxes(), 0);
         // 性別情報を復元
         if (saved.genders) {
           setTimeout(() => this.setGenderSelections(saved.genders), 0);
@@ -215,6 +220,10 @@ class UIController {
         // カスタム重みを復元
         if (saved.customWeights) {
           setTimeout(() => this.setCustomWeights(saved.customWeights), 0);
+        }
+        // 除外設定を復元
+        if (saved.excludeSettings) {
+          setTimeout(() => this.setExcludeSettings(saved.excludeSettings), 0);
         }
       } catch (e) {
         console.error("Failed to load from localStorage:", e);
@@ -240,9 +249,11 @@ class UIController {
     this.courtCountSelect.addEventListener("change", () =>
       this.saveToLocalStorage(),
     );
-    this.roundCountSelect.addEventListener("change", () =>
-      this.saveToLocalStorage(),
-    );
+    this.roundCountSelect.addEventListener("change", () => {
+      // ラウンド数が変更されたら除外設定UIも更新
+      this.updateExcludeCheckboxes();
+      this.saveToLocalStorage();
+    });
     this.matchSubTypeSelect.addEventListener("change", () =>
       this.saveToLocalStorage(),
     );
@@ -437,6 +448,48 @@ class UIController {
   }
 
   /**
+   * 除外設定を取得
+   * @returns {{playerIndex: startRound}} 除外設定オブジェクト
+   */
+  getExcludeSettings() {
+    const excludeSettings = {};
+    const playerCount = parseInt(this.playerCountSelect.value);
+
+    for (let i = 0; i < playerCount; i++) {
+      const select = document.getElementById(`exclude_${i}`);
+      if (!select) continue;
+
+      const value = select.value;
+
+      if (value.startsWith("round_")) {
+        // 特定ラウンドから除外
+        const roundIndex = parseInt(value.replace("round_", ""));
+        excludeSettings[i] = roundIndex;
+      }
+      // value === "" の場合は何もしない（除外なし）
+    }
+
+    return excludeSettings;
+  }
+
+  /**
+   * 除外設定を復元
+   */
+  setExcludeSettings(excludeSettings) {
+    if (!excludeSettings || Object.keys(excludeSettings).length === 0) return;
+
+    Object.keys(excludeSettings).forEach((playerIndex) => {
+      const select = document.getElementById(`exclude_${playerIndex}`);
+      if (!select) return;
+
+      const startRound = excludeSettings[playerIndex];
+      if (typeof startRound === "number" && startRound > 0) {
+        select.value = `round_${startRound}`;
+      }
+    });
+  }
+
+  /**
    * 性別を一括設定（男性のみ）
    */
   setAllMale() {
@@ -559,6 +612,8 @@ class UIController {
     // コート数が変更されたら参加人数の選択肢を更新
     this.courtCountSelect.addEventListener("change", () => {
       this.updatePlayerCountOptions();
+      // コート数が変更されたら除外設定UIも更新
+      this.updateExcludeCheckboxes();
     });
 
     // 対戦方式が変更されたら性別入力フィールドの表示を切り替え
@@ -570,6 +625,8 @@ class UIController {
     // 参加者名入力時に人数を表示
     this.participantsInput.addEventListener("input", () => {
       this.updateParticipantCount();
+      // 参加者名が変更されたら除外設定UIも更新
+      this.updateExcludeCheckboxes();
     });
 
     // 参加人数選択時にも警告チェック
@@ -577,6 +634,8 @@ class UIController {
       this.updateParticipantCount();
       // 参加人数が変更されたら性別チェックボックスも更新
       this.updateGenderCheckboxes();
+      // 参加人数が変更されたら除外設定UIも更新
+      this.updateExcludeCheckboxes();
     });
   }
 
@@ -727,6 +786,79 @@ class UIController {
     // 性別フィールドを表示する場合にチェックボックスを更新
     if (shouldShowGender) {
       this.updateGenderCheckboxes();
+    }
+  }
+
+  /**
+   * 除外設定を表示/非表示切り替え
+   */
+  toggleExcludeSettings() {
+    const content = document.getElementById("excludeSettingsContent");
+    const icon = document.getElementById("excludeToggleIcon");
+
+    if (content && icon) {
+      if (content.style.display === "none") {
+        content.style.display = "block";
+        icon.textContent = "▼";
+      } else {
+        content.style.display = "none";
+        icon.textContent = "▶";
+      }
+    }
+  }
+
+  /**
+   * 除外設定UIを更新
+   */
+  updateExcludeCheckboxes() {
+    const playerCount = parseInt(this.playerCountSelect.value);
+    const roundCount = parseInt(this.roundCountSelect.value);
+    const excludeSettingGroup = document.getElementById("excludeSettingGroup");
+    const excludeCheckboxes = document.getElementById("excludeCheckboxes");
+
+    if (!playerCount || !roundCount) {
+      if (excludeSettingGroup) {
+        excludeSettingGroup.style.display = "none";
+      }
+      return;
+    }
+
+    // 参加者名を取得
+    const text = this.participantsInput.value;
+    const inputNames = text
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+
+    // 除外設定を生成
+    let html = "";
+    for (let i = 0; i < playerCount; i++) {
+      const playerName = inputNames[i] || `プレイヤー${i + 1}`;
+      const label = `${i + 1}. ${playerName}`;
+
+      html += `
+        <div style="border: 1px solid #ddd; border-radius: 6px; padding: 10px; background: #f9f9f9;">
+          <div style="font-weight: 600; margin-bottom: 8px; color: #333; font-size: 13px;">${label}</div>
+          <div style="display: flex; gap: 5px; align-items: center;">
+            <label style="margin: 0; font-weight: 500; color: #666; font-size: 12px;">除外開始ラウンド：</label>
+            <select id="exclude_${i}" style="flex: 1; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 12px;">
+              <option value=""> - </option>
+      `;
+
+      // ラウンド別の除外オプション
+      for (let round = 1; round <= roundCount; round++) {
+        html += `<option value="round_${round}">ラウンド${round}から除外</option>`;
+      }
+
+      html += `</select></div></div>`;
+    }
+
+    if (excludeCheckboxes) {
+      excludeCheckboxes.innerHTML = html;
+    }
+
+    if (excludeSettingGroup) {
+      excludeSettingGroup.style.display = "block";
     }
   }
 
@@ -988,6 +1120,9 @@ class UIController {
     container.innerHTML = html;
   }
 
+  /**
+   * プレイヤー除外ダイアログを表示
+   */
   async generateRotation() {
     const title = this.titleInput.value.trim();
     const playerCount = parseInt(this.playerCountSelect.value);
@@ -1049,6 +1184,9 @@ class UIController {
       };
     }
 
+    // 除外設定を取得
+    const excludeSettings = this.getExcludeSettings();
+
     this.showLoading(true);
 
     await new Promise((resolve) => setTimeout(resolve, 500));
@@ -1062,7 +1200,11 @@ class UIController {
         matchSubType,
         genders,
         selectedFormat,
+        excludeSettings,
       );
+      this.currentRotation = rotation; // 継続ローテーション用に保存
+      this.currentTitle = title;
+      this.currentParticipants = participants;
       this.currentCanvas = new RotationCanvas(rotation, title, "doubles");
       this.currentCanvas.draw();
 
