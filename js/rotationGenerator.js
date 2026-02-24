@@ -14,6 +14,7 @@ class RotationGenerator {
    * @param {number} roundCount - ラウンド数（デフォルト: 10）
    * @param {string} matchSubType - 対戦方式（'balanced' | 'mixed'、デフォルト: 'balanced'）
    * @param {string[]|null} genders - 性別配列（オプション）
+   * @param {string} matchFormat - 試合形式詳細（'doubles' | 'doubles-mixed'、デフォルト: 'doubles'）
    */
   constructor(
     players,
@@ -22,6 +23,7 @@ class RotationGenerator {
     roundCount = 10,
     matchSubType = "balanced",
     genders = null,
+    matchFormat = "doubles",
   ) {
     this.players = players;
     this.courtCount = parseInt(courtCount);
@@ -29,6 +31,7 @@ class RotationGenerator {
     this.roundCount = parseInt(roundCount);
     this.matchSubType = matchSubType;
     this.genders = genders;
+    this.matchFormat = matchFormat;
     this.rounds = [];
     this.debugLogs = [];
 
@@ -456,9 +459,14 @@ class RotationGenerator {
           SCORING_WEIGHTS.POS2_CONSECUTIVE_REST;
         const playerNumberScore = player * SCORING_WEIGHTS.POS2_PLAYER_NUMBER;
 
-        // 男女混合ペアのボーナスを計算
+        // 男女混合ペアのボーナスを計算（ダブルス(ミックス優先)の場合のみ）
         let mixedBonusScore = 0;
-        if (this.genders && this.genders[pos1Player] && this.genders[player]) {
+        if (
+          this.matchFormat === "doubles-mixed" &&
+          this.genders &&
+          this.genders[pos1Player] &&
+          this.genders[player]
+        ) {
           const isMixedPair = this.genders[pos1Player] !== this.genders[player];
           if (isMixedPair) {
             mixedBonusScore = SCORING_WEIGHTS.MIXED_BONUS;
@@ -674,7 +682,12 @@ class RotationGenerator {
 
         // 男女混合ペアのボーナスを計算（ポジション3とのペア）
         let mixedBonusScore = 0;
-        if (this.genders && this.genders[pos3Player] && this.genders[player]) {
+        if (
+          this.matchFormat === "doubles-mixed" &&
+          this.genders &&
+          this.genders[pos3Player] &&
+          this.genders[player]
+        ) {
           const isMixedPair = this.genders[pos3Player] !== this.genders[player];
           if (isMixedPair) {
             mixedBonusScore = SCORING_WEIGHTS.MIXED_BONUS;

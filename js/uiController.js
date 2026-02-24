@@ -738,6 +738,37 @@ class UIController {
     }, 5000);
   }
 
+  /**
+   * メッセージを表示（成功/通常メッセージ用）
+   * @param {string} message - 表示するメッセージ
+   * @param {string} type - メッセージタイプ ('success' | 'info')
+   */
+  showMessage(message, type = "success") {
+    const originalBackground = this.errorMessage.style.backgroundColor;
+    const originalColor = this.errorMessage.style.color;
+
+    // メッセージタイプに応じた色を設定
+    if (type === "success") {
+      this.errorMessage.style.backgroundColor = "#e8f5e9";
+      this.errorMessage.style.color = "#2e7d32";
+    } else if (type === "info") {
+      this.errorMessage.style.backgroundColor = "#e3f2fd";
+      this.errorMessage.style.color = "#1565c0";
+    }
+
+    this.errorMessage.textContent = message;
+    this.errorMessage.classList.add("show");
+
+    setTimeout(() => {
+      this.errorMessage.classList.remove("show");
+      // 元のスタイルを復元
+      setTimeout(() => {
+        this.errorMessage.style.backgroundColor = originalBackground;
+        this.errorMessage.style.color = originalColor;
+      }, 300);
+    }, 3000);
+  }
+
   showLoading(show) {
     if (show) {
       this.loading.classList.add("show");
@@ -1030,6 +1061,7 @@ class UIController {
         roundCount,
         matchSubType,
         genders,
+        selectedFormat,
       );
       this.currentCanvas = new RotationCanvas(rotation, title, "doubles");
       this.currentCanvas.draw();
