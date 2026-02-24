@@ -25,6 +25,8 @@ class UIController {
     this.newBtnTop = document.getElementById("newBtnTop");
     this.downloadBtn = document.getElementById("downloadBtn");
     this.downloadBtnTop = document.getElementById("downloadBtnTop");
+    this.shareBtn = document.getElementById("shareBtn");
+    this.shareBtnTop = document.getElementById("shareBtnTop");
     this.resultSection = document.getElementById("resultSection");
     this.errorMessage = document.getElementById("errorMessage");
     this.loading = document.getElementById("loading");
@@ -49,6 +51,28 @@ class UIController {
 
     // 入力内容の変更時に自動保存
     this.setupAutoSave();
+
+    // デバッグモードじゃない場合、カスタマイズ方式を非表示にする
+    if (!isDebugMode()) {
+      const customOption = document.querySelector('option[value="custom"]');
+      if (customOption) {
+        customOption.style.display = "none";
+      }
+      const customWeightsGroup = document.getElementById("customWeightsGroup");
+      if (customWeightsGroup) {
+        customWeightsGroup.style.display = "none";
+      }
+      const customExplanation = document.getElementById("customExplanation");
+      if (customExplanation) {
+        customExplanation.style.display = "none";
+      }
+    } else {
+      // デバッグモード時は説明を表示
+      const customExplanation = document.getElementById("customExplanation");
+      if (customExplanation) {
+        customExplanation.style.display = "inline";
+      }
+    }
   }
 
   setDefaultTitle() {
@@ -105,6 +129,48 @@ class UIController {
    * - 保存時刻 + 12時間 <= 現在時刻 → 削除して初期化
    */
   loadFromLocalStorage() {
+    // URLパラメータをチェック
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.entries().length > 0) {
+      // URLパラメータがある場合は、URLから値を復元
+      if (urlParams.has("title")) {
+        this.titleInput.value = urlParams.get("title");
+      }
+      if (urlParams.has("participants")) {
+        this.participantsInput.value = urlParams.get("participants");
+      }
+      if (urlParams.has("playerCount")) {
+        this.playerCountSelect.value = urlParams.get("playerCount");
+      }
+      if (urlParams.has("courtCount")) {
+        this.courtCountSelect.value = urlParams.get("courtCount");
+      }
+      if (urlParams.has("roundCount")) {
+        this.roundCountSelect.value = urlParams.get("roundCount");
+      }
+      if (urlParams.has("matchFormat")) {
+        const formatRadio = Array.from(this.matchFormatRadios).find(
+          (radio) => radio.value === urlParams.get("matchFormat"),
+        );
+        if (formatRadio) {
+          formatRadio.checked = true;
+        }
+      }
+      if (urlParams.has("matchSubType")) {
+        this.matchSubTypeSelect.value = urlParams.get("matchSubType");
+      }
+      if (urlParams.has("genders")) {
+        const gendersStr = urlParams.get("genders");
+        setTimeout(() => this.setGenderSelections(gendersStr.split(",")), 0);
+      }
+
+      this.updatePlayerCountOptions();
+      this.updateParticipantCount();
+      this.toggleGenderInput();
+      this.updateMatchSubTypeOptions();
+      return;
+    }
+
     const data = localStorage.getItem("tennisRotationData");
     if (data) {
       try {
@@ -475,6 +541,14 @@ class UIController {
       this.downloadImage();
     });
 
+    this.shareBtn.addEventListener("click", () => {
+      this.shareUrl();
+    });
+
+    this.shareBtnTop.addEventListener("click", () => {
+      this.shareUrl();
+    });
+
     // 試合形式が変更されたら対戦方式の表示を制御
     this.matchFormatRadios.forEach((radio) => {
       radio.addEventListener("change", () => {
@@ -773,6 +847,51 @@ class UIController {
     }, 2000);
   }
 
+  /**
+   * 現在の設定を URL パラメータにしてクリップボードにコピー
+   */
+  shareUrl() {
+    const baseUrl = window.location.origin + window.location.pathname;
+    const params = new URLSearchParams();
+
+    // フォーム値をパラメータに追加
+    params.append("title", this.titleInput.value);
+    params.append("playerCount", this.playerCountSelect.value);
+    params.append("courtCount", this.courtCountSelect.value);
+    params.append("roundCount", this.roundCountSelect.value);
+    params.append(
+      "matchFormat",
+      Array.from(this.matchFormatRadios).find((radio) => radio.checked)?.value,
+    );
+    params.append("matchSubType", this.matchSubTypeSelect.value);
+    params.append("participants", this.participantsInput.value);
+
+    // 性別情報を追加
+    const genders = this.getGenderSelections();
+    if (genders.length > 0) {
+      params.append("genders", genders.join(","));
+    }
+
+    const shareUrl = baseUrl + "?" + params.toString();
+
+    // クリップボードにコピー
+    navigator.clipboard
+      .writeText(shareUrl)
+      .then(() => {
+        this.showMessage("✅ URL をクリップボードにコピーしました", "success");
+      })
+      .catch(() => {
+        // フォールバック: 手動コピーの案内
+        const textArea = document.createElement("textarea");
+        textArea.value = shareUrl;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+        this.showMessage("✅ URL をクリップボードにコピーしました", "success");
+      });
+  }
+
   parseParticipants(text, playerCount) {
     const lines = text
       .split("\n")
@@ -970,6 +1089,38 @@ class UIController {
     this.resultSection.classList.remove("show");
     this.currentCanvas = null;
     this.updatePlayerCountOptions(); // フォームリセット時に参加人数オプションを再設定
+
+    // デフォルト値に合わせてリセット
+    this.setDefaultTitle();
+    this.playerCountSelect.value = "6";
+    this.matchSubTypeSelect.value = "balanced";
+    this.roundCountSelect.value = "25";
+
+    // 試合形式をダブルスに設定
+    const doublesRadio = document.querySelector(
+      'input[name="matchFormat"][value="doubles"]',
+    );
+    if (doublesRadio) {
+      doublesRadio.checked = true;
+    }
+
+    // 試合形式の変更を反映（対戦方式と性別選択の表示/非表示を更新）
+    this.updateMatchSubTypeOptions();
+
+    // コート数は最初の選択肢に（ユーザーが選択するため）
+    if (this.courtCountSelect.options.length > 1) {
+      this.courtCountSelect.selectedIndex = 1;
+    }
+
+    // 参加者テキストをクリア
+    this.participantsInput.value = "";
+    this.updateParticipantCount();
+
+    // 性別チェックボックスをクリア
+    const checkboxes = document.querySelectorAll('input[name="gender"]');
+    checkboxes.forEach((checkbox) => {
+      checkbox.checked = false;
+    });
 
     // カスタム重みをリセット
     const defaultCustomWeights = SCORING_WEIGHTS_PRESETS.balanced;

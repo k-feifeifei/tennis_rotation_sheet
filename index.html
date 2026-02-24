@@ -353,9 +353,11 @@
                 <br />バランス型：出場回数公平性とペア多様性のバランス（推奨）
                 <br />多様性重視型：ペアと対戦の組み合わせバリエーションを最優先
                 <span id="mixedExplanation" style="display: none">
-                  <br />男女混合重視型：男女混合ペアを優先
+                  <br />男女混合重視型：男女混合ペアを優先（人数の少ない側の出場機会が相対的に多くなる傾向）
                 </span>
-                <br />カスタマイズ方式：重みを手動調整
+                <span id="customExplanation" style="display: none">
+                  <br />カスタマイズ方式：重みを手動調整
+                </span>
               </div>
             </div>
 
@@ -829,6 +831,13 @@
         <div class="btn-group">
           <button class="btn btn-secondary" id="newBtnTop">新規作成</button>
           <button class="btn" id="downloadBtnTop">画像を保存</button>
+          <button
+            class="btn btn-secondary"
+            id="shareBtnTop"
+            title="現在の設定をURLでシェア"
+          >
+            🔗 共有
+          </button>
         </div>
         <!-- デバッグ用テーブル形式対戦表 -->
         <div id="debugTableContainer" style="margin-bottom: 20px"></div>
@@ -838,6 +847,13 @@
         <div class="btn-group">
           <button class="btn btn-secondary" id="newBtn">新規作成</button>
           <button class="btn" id="downloadBtn">画像を保存</button>
+          <button
+            class="btn btn-secondary"
+            id="shareBtn"
+            title="現在の設定をURLでシェア"
+          >
+            🔗 共有
+          </button>
         </div>
       </div>
     </div>
