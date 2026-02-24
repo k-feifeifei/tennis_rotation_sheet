@@ -44,8 +44,9 @@ class UIController {
       if (this.playerCountSelect.querySelector('option[value="6"]')) {
         this.playerCountSelect.value = "6";
       }
-      // 除外設定UIを初期化
+      // 除外設定とプレイヤー追加設定UIを初期化
       this.updateExcludeCheckboxes();
+      this.updateAddPlayerCheckboxes();
     }, 0);
 
     // ローカルストレージから前回の入力内容を復元
@@ -172,6 +173,7 @@ class UIController {
       this.toggleGenderInput();
       this.updateMatchSubTypeOptions();
       setTimeout(() => this.updateExcludeCheckboxes(), 0);
+      setTimeout(() => this.updateAddPlayerCheckboxes(), 0);
       return;
     }
 
@@ -213,6 +215,7 @@ class UIController {
         this.toggleGenderInput();
         this.updateMatchSubTypeOptions();
         setTimeout(() => this.updateExcludeCheckboxes(), 0);
+        setTimeout(() => this.updateAddPlayerCheckboxes(), 0);
         // 性別情報を復元
         if (saved.genders) {
           setTimeout(() => this.setGenderSelections(saved.genders), 0);
@@ -250,15 +253,20 @@ class UIController {
       this.saveToLocalStorage(),
     );
     this.roundCountSelect.addEventListener("change", () => {
-      // ラウンド数が変更されたら除外設定UIも更新
+      // ラウンド数が変更されたら除外設定とプレイヤー追加設定UIも更新
       this.updateExcludeCheckboxes();
+      this.updateAddPlayerCheckboxes();
       this.saveToLocalStorage();
     });
-    this.matchSubTypeSelect.addEventListener("change", () =>
-      this.saveToLocalStorage(),
-    );
+    this.matchSubTypeSelect.addEventListener("change", () => {
+      this.updateGenderFields();
+      this.saveToLocalStorage();
+    });
     this.matchFormatRadios.forEach((radio) => {
-      radio.addEventListener("change", () => this.saveToLocalStorage());
+      radio.addEventListener("change", () => {
+        this.updateGenderFields();
+        this.saveToLocalStorage();
+      });
     });
 
     // カスタム重みの変更を検知して自動保存
@@ -451,42 +459,77 @@ class UIController {
    * 除外設定を取得
    * @returns {{playerIndex: startRound}} 除外設定オブジェクト
    */
+  /**
+   * プレイヤー除外設定を取得
+   */
+  /**
+   * プレイヤー除外設定を取得
+   */
   getExcludeSettings() {
-    const excludeSettings = {};
-    const playerCount = parseInt(this.playerCountSelect.value);
+    const excludeCheckboxes = document.getElementById("excludeCheckboxes");
+    if (!excludeCheckboxes) return {};
 
-    for (let i = 0; i < playerCount; i++) {
-      const select = document.getElementById(`exclude_${i}`);
-      if (!select) continue;
+    const rows = excludeCheckboxes.querySelectorAll("[id^='excludeRow_']");
+    const settings = {};
+    const duplicateCheck = new Set();
 
-      const value = select.value;
+    rows.forEach((row) => {
+      const playerSelect = row.querySelector(".excludePlayer");
+      const roundSelect = row.querySelector(".excludeRound");
 
-      if (value.startsWith("round_")) {
-        // 特定ラウンドから除外
-        const roundIndex = parseInt(value.replace("round_", ""));
-        excludeSettings[i] = roundIndex;
+      if (playerSelect && roundSelect) {
+        const playerIndex = parseInt(playerSelect.value);
+        const startRound = parseInt(roundSelect.value);
+        if (!isNaN(playerIndex) && !isNaN(startRound)) {
+          // 重複チェック
+          if (duplicateCheck.has(playerIndex)) {
+            console.warn(`警告: プレイヤー ${playerIndex + 1} が複数回除外設定されています。最初の設定のみ有効です。`);
+          } else {
+            settings[playerIndex] = startRound;
+            duplicateCheck.add(playerIndex);
+          }
+        }
       }
-      // value === "" の場合は何もしない（除外なし）
-    }
+    });
 
-    return excludeSettings;
+    return settings;
   }
 
   /**
-   * 除外設定を復元
+   * 除外設定を復元（新しい動的UI形式に対応）
    */
   setExcludeSettings(excludeSettings) {
     if (!excludeSettings || Object.keys(excludeSettings).length === 0) return;
 
-    Object.keys(excludeSettings).forEach((playerIndex) => {
-      const select = document.getElementById(`exclude_${playerIndex}`);
-      if (!select) return;
+    const excludeCheckboxes = document.getElementById("excludeCheckboxes");
+    if (!excludeCheckboxes) return;
 
+    // 既存の行をクリア
+    excludeCheckboxes.innerHTML = "";
+
+    // 除外設定ごとに行を作成
+    Object.keys(excludeSettings).forEach((playerIndex) => {
       const startRound = excludeSettings[playerIndex];
       if (typeof startRound === "number" && startRound > 0) {
-        select.value = `round_${startRound}`;
+        // 行を追加
+        this.addExcludeRow();
+        
+        // 追加した行の値を設定
+        const rows = excludeCheckboxes.querySelectorAll("[id^='excludeRow_']");
+        const lastRow = rows[rows.length - 1];
+        if (lastRow) {
+          const playerSelect = lastRow.querySelector(".excludePlayer");
+          const roundSelect = lastRow.querySelector(".excludeRound");
+          if (playerSelect && roundSelect) {
+            playerSelect.value = playerIndex;
+            roundSelect.value = startRound;
+          }
+        }
       }
     });
+    
+    // すべての設定完了後に選択肢を更新
+    this.updateExcludePlayerOptions();
   }
 
   /**
@@ -606,6 +649,7 @@ class UIController {
     this.matchFormatRadios.forEach((radio) => {
       radio.addEventListener("change", () => {
         this.updateMatchSubTypeOptions();
+        this.updateGenderFields();
       });
     });
 
@@ -620,6 +664,7 @@ class UIController {
     this.matchSubTypeSelect.addEventListener("change", () => {
       this.toggleGenderInput();
       this.toggleCustomWeightsDisplay();
+      this.updateGenderFields();
     });
 
     // 参加者名入力時に人数を表示
@@ -808,20 +853,145 @@ class UIController {
   }
 
   /**
-   * 除外設定UIを更新
+   * プレイヤー追加設定を表示/非表示切り替え
    */
-  updateExcludeCheckboxes() {
-    const playerCount = parseInt(this.playerCountSelect.value);
-    const roundCount = parseInt(this.roundCountSelect.value);
-    const excludeSettingGroup = document.getElementById("excludeSettingGroup");
-    const excludeCheckboxes = document.getElementById("excludeCheckboxes");
+  toggleAddPlayerSettings() {
+    const content = document.getElementById("addPlayerSettingsContent");
+    const icon = document.getElementById("addPlayerToggleIcon");
 
-    if (!playerCount || !roundCount) {
-      if (excludeSettingGroup) {
-        excludeSettingGroup.style.display = "none";
+    if (content && icon) {
+      if (content.style.display === "none") {
+        content.style.display = "block";
+        icon.textContent = "▼";
+      } else {
+        content.style.display = "none";
+        icon.textContent = "▶";
+      }
+    }
+  }
+
+  /**
+   * プレイヤー追加設定UIを更新
+   */
+  updateAddPlayerCheckboxes() {
+    const roundCount = parseInt(this.roundCountSelect.value);
+    const addPlayerSettingGroup = document.getElementById(
+      "addPlayerSettingGroup",
+    );
+
+    if (!roundCount) {
+      if (addPlayerSettingGroup) {
+        addPlayerSettingGroup.style.display = "none";
       }
       return;
     }
+
+    if (addPlayerSettingGroup) {
+      addPlayerSettingGroup.style.display = "block";
+    }
+  }
+
+  /**
+   * 性別フィールドを動的に更新
+   */
+  updateGenderFields() {
+    const selectedFormat = Array.from(this.matchFormatRadios).find(
+      (radio) => radio.checked,
+    )?.value;
+    const matchSubType = this.matchSubTypeSelect.value;
+    const needsGender =
+      selectedFormat === "doubles-mixed" || matchSubType === "mixed";
+
+    // プレイヤー追加行の性別フィールドを更新
+    const addPlayerRows = document.querySelectorAll("[id^='addPlayerRow_']");
+    addPlayerRows.forEach((row) => {
+      const existingGender = row.querySelector(".addPlayerGender");
+      const deleteButton = row.querySelector("button[onclick*='removePlayerRow']");
+
+      if (needsGender && !existingGender && deleteButton) {
+        // 性別フィールドを追加
+        const genderHtml = `
+          <div class="gender-field" style="flex: 0 0 120px;">
+            <label style="display: block; margin-bottom: 5px; font-weight: 500; color: #666; font-size: 12px;">性別</label>
+            <select class="addPlayerGender" style="width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 12px;">
+              <option value="M">👨 男性</option>
+              <option value="F">👩 女性</option>
+            </select>
+          </div>
+        `;
+        deleteButton.insertAdjacentHTML("beforebegin", genderHtml);
+      } else if (!needsGender && existingGender) {
+        // 性別フィールドを削除
+        const genderField = existingGender.closest(".gender-field");
+        if (genderField) {
+          genderField.remove();
+        }
+      }
+    });
+  }
+
+  /**
+   * プレイヤー追加行を追加
+   */
+  addPlayerRow() {
+    const roundCount = parseInt(this.roundCountSelect.value);
+    const addPlayerCheckboxes = document.getElementById("addPlayerCheckboxes");
+    if (!addPlayerCheckboxes) return;
+
+    const rowId = `addPlayerRow_${Date.now()}`;
+    let roundOptions = "";
+    for (let i = 1; i <= roundCount; i++) {
+      roundOptions += `<option value="${i}">第${i}ラウンド</option>`;
+    }
+
+    // ミックス対応時の性別選択
+    const selectedFormat = Array.from(this.matchFormatRadios).find(
+      (radio) => radio.checked,
+    )?.value;
+    const matchSubType = this.matchSubTypeSelect.value;
+    const needsGender =
+      selectedFormat === "doubles-mixed" || matchSubType === "mixed";
+
+    const genderHtml = needsGender
+      ? `
+      <div class="gender-field" style="flex: 0 0 120px;">
+        <label style="display: block; margin-bottom: 5px; font-weight: 500; color: #666; font-size: 12px;">性別</label>
+        <select class="addPlayerGender" style="width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 12px;">
+          <option value="M">👨 男性</option>
+          <option value="F">👩 女性</option>
+        </select>
+      </div>
+    `
+      : "";
+
+    const html = `
+      <div id="${rowId}" style="border: 1px solid #ddd; border-radius: 6px; padding: 12px; background: #f9f9f9; display: flex; gap: 10px; align-items: end;">
+        <div style="flex: 1;">
+          <label style="display: block; margin-bottom: 5px; font-weight: 500; color: #666; font-size: 12px;">プレイヤー名</label>
+          <input type="text" class="addPlayerName" placeholder="新規プレイヤー名" style="width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 12px;">
+        </div>
+        <div style="flex: 0 0 150px;">
+          <label style="display: block; margin-bottom: 5px; font-weight: 500; color: #666; font-size: 12px;">追加開始ラウンド</label>
+          <select class="addPlayerRound" style="width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 12px;">
+            ${roundOptions}
+          </select>
+        </div>
+        ${genderHtml}
+        <button type="button" onclick="uiController.removePlayerRow('${rowId}')" style="padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; height: 32px;">削除</button>
+      </div>
+    `;
+
+    addPlayerCheckboxes.insertAdjacentHTML("beforeend", html);
+  }
+
+  /**
+   * プレイヤー除外行を追加
+   */
+  addExcludeRow() {
+    const playerCount = parseInt(this.playerCountSelect.value);
+    const roundCount = parseInt(this.roundCountSelect.value);
+    const excludeCheckboxes = document.getElementById("excludeCheckboxes");
+    if (!excludeCheckboxes) return;
 
     // 参加者名を取得
     const text = this.participantsInput.value;
@@ -830,31 +1000,181 @@ class UIController {
       .map((line) => line.trim())
       .filter((line) => line.length > 0);
 
-    // 除外設定を生成
-    let html = "";
+    const rowId = `excludeRow_${Date.now()}`;
+    
+    // すでに選択されているプレイヤーを取得
+    const selectedPlayers = this.getSelectedExcludePlayers();
+
+    // プレイヤー選択肢を生成（選択済みのプレイヤーを除外）
+    let playerOptions = "";
     for (let i = 0; i < playerCount; i++) {
       const playerName = inputNames[i] || `プレイヤー${i + 1}`;
-      const label = `${i + 1}. ${playerName}`;
-
-      html += `
-        <div style="border: 1px solid #ddd; border-radius: 6px; padding: 10px; background: #f9f9f9;">
-          <div style="font-weight: 600; margin-bottom: 8px; color: #333; font-size: 13px;">${label}</div>
-          <div style="display: flex; gap: 5px; align-items: center;">
-            <label style="margin: 0; font-weight: 500; color: #666; font-size: 12px;">除外開始ラウンド：</label>
-            <select id="exclude_${i}" style="flex: 1; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 12px;">
-              <option value=""> - </option>
-      `;
-
-      // ラウンド別の除外オプション
-      for (let round = 1; round <= roundCount; round++) {
-        html += `<option value="round_${round}">ラウンド${round}から除外</option>`;
+      if (!selectedPlayers.has(i)) {
+        playerOptions += `<option value="${i}">${i + 1}. ${playerName}</option>`;
       }
-
-      html += `</select></div></div>`;
     }
 
+    // 選択可能なプレイヤーがいない場合は追加不可
+    if (playerOptions === "") {
+      this.showError("すべてのプレイヤーが既に除外設定されています");
+      return;
+    }
+
+    // ラウンド選択肢を生成
+    let roundOptions = "";
+    for (let i = 1; i <= roundCount; i++) {
+      roundOptions += `<option value="${i}">第${i}ラウンド</option>`;
+    }
+
+    const html = `
+      <div id="${rowId}" style="border: 1px solid #ddd; border-radius: 6px; padding: 12px; background: #f9f9f9; display: flex; gap: 10px; align-items: end;">
+        <div style="flex: 1;">
+          <label style="display: block; margin-bottom: 5px; font-weight: 500; color: #666; font-size: 12px;">プレイヤー</label>
+          <select class="excludePlayer" onchange="uiController.updateExcludePlayerOptions()" style="width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 12px;">
+            ${playerOptions}
+          </select>
+        </div>
+        <div style="flex: 0 0 150px;">
+          <label style="display: block; margin-bottom: 5px; font-weight: 500; color: #666; font-size: 12px;">除外開始ラウンド</label>
+          <select class="excludeRound" style="width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 12px;">
+            ${roundOptions}
+          </select>
+        </div>
+        <button type="button" onclick="uiController.removeExcludeRow('${rowId}')" style="padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; height: 32px;">削除</button>
+      </div>
+    `;
+
+    excludeCheckboxes.insertAdjacentHTML("beforeend", html);
+  }
+
+  /**
+   * 選択されているプレイヤーを取得
+   */
+  getSelectedExcludePlayers() {
+    const excludeCheckboxes = document.getElementById("excludeCheckboxes");
+    const selectedPlayers = new Set();
+    
     if (excludeCheckboxes) {
-      excludeCheckboxes.innerHTML = html;
+      const rows = excludeCheckboxes.querySelectorAll("[id^='excludeRow_']");
+      rows.forEach((row) => {
+        const playerSelect = row.querySelector(".excludePlayer");
+        if (playerSelect && playerSelect.value !== "") {
+          selectedPlayers.add(parseInt(playerSelect.value));
+        }
+      });
+    }
+    
+    return selectedPlayers;
+  }
+
+  /**
+   * すべての除外行のプレイヤー選択肢を更新
+   */
+  updateExcludePlayerOptions() {
+    const playerCount = parseInt(this.playerCountSelect.value);
+    const excludeCheckboxes = document.getElementById("excludeCheckboxes");
+    if (!excludeCheckboxes) return;
+
+    // 参加者名を取得
+    const text = this.participantsInput.value;
+    const inputNames = text
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+
+    const selectedPlayers = this.getSelectedExcludePlayers();
+    const rows = excludeCheckboxes.querySelectorAll("[id^='excludeRow_']");
+
+    rows.forEach((row) => {
+      const playerSelect = row.querySelector(".excludePlayer");
+      if (!playerSelect) return;
+
+      const currentValue = playerSelect.value;
+      
+      // 現在の選択値を保持して選択肢を再構築
+      let newOptions = "";
+      for (let i = 0; i < playerCount; i++) {
+        const playerName = inputNames[i] || `プレイヤー${i + 1}`;
+        // 自分自身の選択値または未選択のプレイヤーのみ表示
+        if (i === parseInt(currentValue) || !selectedPlayers.has(i)) {
+          const selected = i === parseInt(currentValue) ? " selected" : "";
+          newOptions += `<option value="${i}"${selected}>${i + 1}. ${playerName}</option>`;
+        }
+      }
+
+      playerSelect.innerHTML = newOptions;
+    });
+  }
+
+  /**
+   * プレイヤー追加行を削除
+   */
+  removePlayerRow(rowId) {
+    const row = document.getElementById(rowId);
+    if (row) {
+      row.remove();
+    }
+  }
+
+  /**
+   * プレイヤー除外行を削除
+   */
+  removeExcludeRow(rowId) {
+    const row = document.getElementById(rowId);
+    if (row) {
+      row.remove();
+      // 削除後、他の行の選択肢を更新
+      this.updateExcludePlayerOptions();
+    }
+  }
+
+  /**
+   * プレイヤー追加設定を取得
+   */
+  getAddPlayerSettings() {
+    const addPlayerCheckboxes = document.getElementById("addPlayerCheckboxes");
+    if (!addPlayerCheckboxes) return [];
+
+    const rows = addPlayerCheckboxes.querySelectorAll("[id^='addPlayerRow_']");
+    const settings = [];
+
+    rows.forEach((row) => {
+      const nameInput = row.querySelector(".addPlayerName");
+      const roundSelect = row.querySelector(".addPlayerRound");
+      const genderSelect = row.querySelector(".addPlayerGender");
+
+      if (nameInput && roundSelect && nameInput.value.trim()) {
+        const startRound = parseInt(roundSelect.value);
+        const playerSetting = {
+          name: nameInput.value.trim(),
+          startRound: startRound,
+          gender: genderSelect ? genderSelect.value : null,
+        };
+        console.log("プレイヤー追加設定:", playerSetting);
+        settings.push(playerSetting);
+      }
+    });
+
+    console.log("全プレイヤー追加設定:", settings);
+    return settings;
+  }
+
+  /**
+   * 除外設定UIを更新
+   */
+  /**
+   * 除外設定UIを更新（表示/非表示のみ）
+   */
+  updateExcludeCheckboxes() {
+    const playerCount = parseInt(this.playerCountSelect.value);
+    const roundCount = parseInt(this.roundCountSelect.value);
+    const excludeSettingGroup = document.getElementById("excludeSettingGroup");
+
+    if (!playerCount || !roundCount) {
+      if (excludeSettingGroup) {
+        excludeSettingGroup.style.display = "none";
+      }
+      return;
     }
 
     if (excludeSettingGroup) {
@@ -1205,6 +1525,76 @@ class UIController {
       this.currentRotation = rotation; // 継続ローテーション用に保存
       this.currentTitle = title;
       this.currentParticipants = participants;
+
+      // プレイヤー追加設定を処理
+      const addPlayerSettings = this.getAddPlayerSettings();
+      if (addPlayerSettings.length > 0) {
+        console.log("プレイヤー追加処理開始:", addPlayerSettings.length, "人");
+        // startRound順にソート
+        addPlayerSettings.sort((a, b) => a.startRound - b.startRound);
+
+        for (const setting of addPlayerSettings) {
+          try {
+            // startRound-1までの各プレイヤーの出場回数を計算
+            const rounds = rotation.getRounds();
+            const preservedRounds = rounds.slice(0, setting.startRound - 1);
+            const playCountMap = {};
+
+            // 現時点での全プレイヤーの出場回数を0で初期化
+            this.currentParticipants.forEach((name) => {
+              playCountMap[name] = 0;
+            });
+
+            // preservedRoundsから出場回数を集計
+            for (const roundGroup of preservedRounds) {
+              for (const match of roundGroup) {
+                // team1とteam2の全プレイヤーをカウント
+                [
+                  match.team1[0],
+                  match.team1[1],
+                  match.team2[0],
+                  match.team2[1],
+                ].forEach((playerName) => {
+                  if (playCountMap[playerName] !== undefined) {
+                    playCountMap[playerName]++;
+                  }
+                });
+              }
+            }
+
+            // 平均出場回数を計算
+            const totalPlayCount = Object.values(playCountMap).reduce(
+              (sum, count) => sum + count,
+              0,
+            );
+            const avgPlayCount = Math.floor(
+              totalPlayCount / this.currentParticipants.length,
+            );
+
+            console.log(
+              `プレイヤー追加: ${setting.name}, round: ${setting.startRound}, 第${setting.startRound - 1}ラウンドまでの平均出場回数: ${avgPlayCount}, gender: ${setting.gender}`,
+            );
+            rotation.addPlayerAndContinue(
+              setting.name,
+              setting.startRound,
+              avgPlayCount,
+              setting.gender,
+            );
+            this.currentParticipants.push(setting.name);
+            console.log(`プレイヤー追加成功: ${setting.name}`);
+          } catch (addPlayerError) {
+            console.error(
+              `プレイヤー追加エラー: ${setting.name}`,
+              addPlayerError,
+            );
+            throw new Error(
+              `プレイヤー「${setting.name}」の追加に失敗しました: ${addPlayerError.message}`,
+            );
+          }
+        }
+        console.log("プレイヤー追加処理完了");
+      }
+
       this.currentCanvas = new RotationCanvas(rotation, title, "doubles");
       this.currentCanvas.draw();
 
@@ -1255,6 +1645,206 @@ class UIController {
     } catch (error) {
       this.showError("画像の保存中にエラーが発生しました");
       console.error(error);
+    }
+  }
+
+  /**
+   * プレイヤー追加ダイアログを表示
+   */
+  showAddPlayerDialog() {
+    if (!this.currentRotation || !this.currentParticipants) {
+      this.showError("ローテーション表が生成されていません");
+      return;
+    }
+
+    const maxRound = this.currentRotation.roundCount;
+    let roundOptions = "";
+    for (let i = 1; i <= maxRound; i++) {
+      roundOptions += `<option value="${i}">第${i}ラウンド</option>`;
+    }
+
+    const dialogHtml = `
+      <div id="addPlayerDialog" style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 2000;
+      ">
+        <div style="
+          background: white;
+          border-radius: 10px;
+          padding: 20px;
+          max-width: 500px;
+          width: 90%;
+          max-height: 80vh;
+          overflow-y: auto;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        ">
+          <h2 style="margin-bottom: 15px; color: #333;">👤 プレイヤーを追加</h2>
+          <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #555;">プレイヤー名</label>
+            <input type="text" id="newPlayerName" placeholder="新規プレイヤーの名前" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px;">
+          </div>
+          <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #555;">追加開始ラウンド</label>
+            <select id="addPlayerRound" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px;">
+              ${roundOptions}
+            </select>
+          </div>
+    `;
+
+    // ミックス対応時は性別選択を追加
+    if (
+      Array.from(this.matchFormatRadios).find((r) => r.checked)?.value ===
+        "doubles-mixed" &&
+      this.matchSubTypeSelect.value === "mixed"
+    ) {
+      dialogHtml += `
+          <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #555;">性別</label>
+            <div style="display: flex; gap: 15px;">
+              <label style="display: flex; align-items: center; font-weight: 400;">
+                <input type="radio" name="newPlayerGender" value="M" checked style="margin-right: 8px;">
+                👨 男性
+              </label>
+              <label style="display: flex; align-items: center; font-weight: 400;">
+                <input type="radio" name="newPlayerGender" value="F" style="margin-right: 8px;">
+                👩 女性
+              </label>
+            </div>
+          </div>
+      `;
+    }
+
+    dialogHtml += `
+          <div style="margin-bottom: 15px; padding: 10px; background: #f0f0f0; border-radius: 5px; font-size: 12px; color: #666;">
+            <strong>統計の初期化方法：</strong><br>
+            既存プレイヤーの平均出場回数でプレイヤーを初期化し、公平な組み合わせを確保します。
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <button onclick="uiController.confirmAddPlayer()" class="btn" style="flex: 1; padding: 10px; margin: 0;">追加実行</button>
+            <button onclick="document.getElementById('addPlayerDialog').remove()" class="btn btn-secondary" style="flex: 1; padding: 10px; margin: 0;">キャンセル</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const dialogElement = document.createElement("div");
+    dialogElement.innerHTML = dialogHtml;
+    document.body.appendChild(dialogElement.firstElementChild);
+  }
+
+  /**
+   * プレイヤー追加を実行
+   */
+  confirmAddPlayer() {
+    const newPlayerName = document.getElementById("newPlayerName").value.trim();
+    const addPlayerRound = parseInt(
+      document.getElementById("addPlayerRound").value,
+    );
+
+    if (!newPlayerName) {
+      this.showError("プレイヤー名を入力してください");
+      return;
+    }
+
+    if (addPlayerRound > this.currentRotation.roundCount) {
+      this.showError("追加開始ラウンドが不正です");
+      return;
+    }
+
+    // 性別を取得（ミックス対応時のみ）
+    let newPlayerGender = null;
+    const genderRadios = document.querySelectorAll(
+      'input[name="newPlayerGender"]',
+    );
+    if (genderRadios.length > 0) {
+      const checked = Array.from(genderRadios).find((r) => r.checked);
+      if (checked) {
+        newPlayerGender = checked.value;
+      }
+    }
+
+    // ダイアログを閉じる
+    const dialog = document.getElementById("addPlayerDialog");
+    if (dialog) {
+      dialog.remove();
+    }
+
+    this.showLoading(true);
+
+    try {
+      // addPlayerRound-1までの各プレイヤーの出場回数を計算
+      const rounds = this.currentRotation.getRounds();
+      const preservedRounds = rounds.slice(0, addPlayerRound - 1);
+      const playCountMap = {};
+
+      // 現時点での全プレイヤーの出場回数を0で初期化
+      this.currentParticipants.forEach((name) => {
+        playCountMap[name] = 0;
+      });
+
+      // preservedRoundsから出場回数を集計
+      for (const roundGroup of preservedRounds) {
+        for (const match of roundGroup) {
+          // team1とteam2の全プレイヤーをカウント
+          [
+            match.team1[0],
+            match.team1[1],
+            match.team2[0],
+            match.team2[1],
+          ].forEach((playerName) => {
+            if (playCountMap[playerName] !== undefined) {
+              playCountMap[playerName]++;
+            }
+          });
+        }
+      }
+
+      // 平均出場回数を計算
+      const totalPlayCount = Object.values(playCountMap).reduce(
+        (sum, count) => sum + count,
+        0,
+      );
+      const avgPlayCount = Math.floor(
+        totalPlayCount / this.currentParticipants.length,
+      );
+
+      console.log(
+        `プレイヤー追加: ${newPlayerName}, round: ${addPlayerRound}, 第${addPlayerRound - 1}ラウンドまでの平均出場回数: ${avgPlayCount}`,
+      );
+
+      // 新規プレイヤーを追加して継続生成
+      this.currentRotation.addPlayerAndContinue(
+        newPlayerName,
+        addPlayerRound,
+        avgPlayCount,
+        newPlayerGender,
+      );
+      this.currentParticipants.push(newPlayerName);
+
+      // 結果を再描画
+      this.currentCanvas = new RotationCanvas(
+        this.currentRotation,
+        this.currentTitle,
+        "doubles",
+      );
+      this.currentCanvas.draw();
+
+      this.showLoading(false);
+      this.showMessage(
+        `✅ ${newPlayerName}を第${addPlayerRound}ラウンドから追加しました`,
+        "success",
+      );
+    } catch (error) {
+      this.showLoading(false);
+      this.showError(error.message);
     }
   }
 

@@ -763,6 +763,54 @@
 
           <div
             class="form-group"
+            id="addPlayerSettingGroup"
+            style="display: none"
+          >
+            <div
+              style="
+                display: flex;
+                align-items: center;
+                cursor: pointer;
+                user-select: none;
+              "
+              onclick="uiController.toggleAddPlayerSettings()"
+            >
+              <label style="margin: 0; cursor: pointer; flex: 1"
+                >➕ プレイヤー追加設定
+                <span id="addPlayerToggleIcon" style="margin-left: 8px">▶</span>
+              </label>
+            </div>
+            <div
+              id="addPlayerSettingsContent"
+              style="display: none; margin-top: 15px"
+            >
+              <div
+                id="addPlayerCheckboxes"
+                style="
+                  display: grid;
+                  grid-template-columns: 1fr;
+                  gap: 15px;
+                  margin-bottom: 10px;
+                "
+              >
+                <!-- プレイヤー追加設定が動的に生成されます -->
+              </div>
+              <button
+                type="button"
+                class="btn btn-secondary"
+                onclick="uiController.addPlayerRow()"
+                style="padding: 10px; font-size: 14px; width: 100%"
+              >
+                ➕ プレイヤーを追加
+              </button>
+              <div class="form-help" style="margin-top: 10px">
+                ※指定したラウンドから新規プレイヤーを追加できます。既存プレイヤーの平均出場回数で統計を初期化し、公平性を確保します。
+              </div>
+            </div>
+          </div>
+
+          <div
+            class="form-group"
             id="excludeSettingGroup"
             style="display: none"
           >
@@ -776,7 +824,7 @@
               onclick="uiController.toggleExcludeSettings()"
             >
               <label style="margin: 0; cursor: pointer; flex: 1"
-                >👤 除外設定
+                >👤 プレイヤー除外設定
                 <span id="excludeToggleIcon" style="margin-left: 8px">▶</span>
               </label>
             </div>
@@ -788,15 +836,23 @@
                 id="excludeCheckboxes"
                 style="
                   display: grid;
-                  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-                  gap: 10px;
+                  grid-template-columns: 1fr;
+                  gap: 15px;
                   margin-bottom: 10px;
                 "
               >
                 <!-- 除外設定が動的に生成されます -->
               </div>
-              <div class="form-help">
-                ※各プレイヤーについて、除外開始ラウンドを指定できます。指定したラウンド以降、そのプレイヤーは選出されません。複数のプレイヤーを異なるラウンドで除外することも可能です。
+              <button
+                type="button"
+                class="btn btn-secondary"
+                onclick="uiController.addExcludeRow()"
+                style="padding: 10px; font-size: 14px; width: 100%"
+              >
+                ➖ 除外設定を追加
+              </button>
+              <div class="form-help" style="margin-top: 10px">
+                ※指定したラウンドから特定のプレイヤーを除外できます。複数のプレイヤーを異なるラウンドで除外することも可能です。
               </div>
             </div>
           </div>

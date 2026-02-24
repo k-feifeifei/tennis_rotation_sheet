@@ -229,6 +229,10 @@ class RotationGenerator {
     // プレイヤー名に番号と性別情報を付与
     const formattedName = `${playerNumber}. ${playerName}|${gender}`;
 
+    console.log(
+      `createPlayerStats: ID=${playerId}, Name=${playerName}, Gender=${gender}, PlayCount=${this.playCount[playerId]}`,
+    );
+
     return {
       name: formattedName,
       playCount: this.playCount[playerId],
@@ -763,6 +767,193 @@ class RotationGenerator {
     });
 
     return candidates[0].player;
+  }
+
+  /**
+   * 新規プレイヤーを追加して継続生成
+   * @param {string} newPlayerName - 新規プレイヤー名
+   * @param {number} startRound - 追加開始ラウンド（1-based）
+   * @param {number} initialPlayCount - 初期出場回数（既存プレイヤーの平均値で初期化）
+   * @param {string|null} newPlayerGender - 新規プレイヤーの性別（M/F、オプション）
+   */
+  addPlayerAndContinue(
+    newPlayerName,
+    startRound,
+    initialPlayCount,
+    newPlayerGender = null,
+  ) {
+    // 入力検証
+    if (!newPlayerName || typeof newPlayerName !== "string") {
+      throw new Error("プレイヤー名が無効です");
+    }
+    if (
+      !Number.isInteger(startRound) ||
+      startRound < 1 ||
+      startRound > this.rounds.length
+    ) {
+      throw new Error(
+        `開始ラウンドが無効です: ${startRound}（有効範囲: 1-${this.rounds.length}）`,
+      );
+    }
+    if (!Number.isInteger(initialPlayCount) || initialPlayCount < 0) {
+      throw new Error(
+        `初期出場回数が無効です: ${initialPlayCount}（整数が必要）`,
+      );
+    }
+
+    // 1. 新規プレイヤーを配列に追加
+    const newPlayerIndex = this.players.length;
+    this.players.push(newPlayerName);
+
+    // 2. 性別を追加（ミックス対応時のみ）
+    if (this.genders) {
+      // gendersが存在する場合は必ず追加（デフォルトは"M"）
+      this.genders.push(newPlayerGender || "M");
+    }
+
+    // 3. 統計情報を拡張（整数に丸める）
+    this.playCount.push(Math.floor(initialPlayCount));
+    this.consecutiveRestCount.push(0);
+
+    // 4. ペア・対戦履歴を拡張
+    const playerCount = this.players.length;
+    for (let i = 0; i < playerCount - 1; i++) {
+      this.partnerHistory[i].push(0);
+      this.matchHistory[i].push(0);
+    }
+    this.partnerHistory.push(Array(playerCount).fill(0));
+    this.matchHistory.push(Array(playerCount).fill(0));
+
+    // 5. startRound - 1まで既存ラウンドを保持し、startRound以降を再生成
+    const preservedRounds = this.rounds.slice(0, startRound - 1);
+
+    // 5.1. 全プレイヤーの統計をpreservedRoundsまでの正確な値に再計算
+    // playCountなどをリセット
+    for (let i = 0; i < newPlayerIndex; i++) {
+      this.playCount[i] = 0;
+      this.consecutiveRestCount[i] = 0;
+    }
+    // 新規プレイヤーの統計は既に初期化済み
+
+    // ペア・対戦履歴をリセット
+    for (let i = 0; i < playerCount; i++) {
+      for (let j = 0; j < playerCount; j++) {
+        this.partnerHistory[i][j] = 0;
+        this.matchHistory[i][j] = 0;
+      }
+    }
+
+    // preservedRoundsの統計を再集計
+    for (let roundIdx = 0; roundIdx < preservedRounds.length; roundIdx++) {
+      const roundGroup = preservedRounds[roundIdx];
+      const playedInRound = new Set();
+
+      // roundGroupは試合の配列
+      for (const match of roundGroup) {
+        // matchから元の試合データを復元
+        // team1: [name1, name2], team2: [name3, name4]
+        const p1Name = match.team1[0];
+        const p2Name = match.team1[1];
+        const p3Name = match.team2[0];
+        const p4Name = match.team2[1];
+
+        const p1 = this.players.indexOf(p1Name);
+        const p2 = this.players.indexOf(p2Name);
+        const p3 = this.players.indexOf(p3Name);
+        const p4 = this.players.indexOf(p4Name);
+
+        if (p1 >= 0 && p2 >= 0 && p3 >= 0 && p4 >= 0) {
+          // 出場フラグを記録
+          playedInRound.add(p1);
+          playedInRound.add(p2);
+          playedInRound.add(p3);
+          playedInRound.add(p4);
+
+          // 出場回数を更新
+          this.playCount[p1]++;
+          this.playCount[p2]++;
+          this.playCount[p3]++;
+          this.playCount[p4]++;
+
+          // ペア関係を更新
+          this.partnerHistory[p1][p2]++;
+          this.partnerHistory[p2][p1]++;
+          this.partnerHistory[p3][p4]++;
+          this.partnerHistory[p4][p3]++;
+
+          // 対戦関係を更新
+          this.matchHistory[p1][p3]++;
+          this.matchHistory[p1][p4]++;
+          this.matchHistory[p2][p3]++;
+          this.matchHistory[p2][p4]++;
+          this.matchHistory[p3][p1]++;
+          this.matchHistory[p3][p2]++;
+          this.matchHistory[p4][p1]++;
+          this.matchHistory[p4][p2]++;
+        }
+      }
+
+      // このラウンドでの待機状況を更新（既存プレイヤーのみ）
+      for (let i = 0; i < newPlayerIndex; i++) {
+        if (!playedInRound.has(i)) {
+          this.consecutiveRestCount[i]++;
+        } else {
+          this.consecutiveRestCount[i] = 0;
+        }
+      }
+    }
+
+    // 6. startRound以降のラウンドを生成
+    this.rounds = preservedRounds;
+    const playerCountForGeneration = this.players.length;
+
+    console.log(`=== プレイヤー追加後の状態 ===`);
+    console.log(`プレイヤー総数: ${playerCountForGeneration}`);
+    console.log(`プレイヤーリスト:`, this.players);
+    console.log(`性別リスト:`, this.genders);
+    console.log(`出場回数:`, this.playCount);
+    console.log(
+      `startRound以降を再生成: Round ${startRound} ~ ${this.roundCount}`,
+    );
+
+    for (let round = startRound - 1; round < this.roundCount; round++) {
+      this.addLog(
+        `\n========== 第${round + 1}ラウンド (新規プレイヤーを含む) ==========`,
+      );
+      const usedInRound = new Set();
+      const roundMatches = [];
+
+      for (let court = 0; court < this.courtCount; court++) {
+        const match = this.generateSingleCourtMatch(
+          playerCountForGeneration,
+          usedInRound,
+          court,
+          round + 1,
+        );
+        if (match) {
+          roundMatches.push(match);
+        }
+      }
+
+      if (roundMatches.length > 0) {
+        this.updateStatistics(roundMatches);
+        const roundGroup = this.createRoundGroup(roundMatches);
+        console.log(`Round ${round + 1} (新規プレイヤー含む) 生成完了:`, {
+          プレイヤー数: playerCountForGeneration,
+          試合データ: roundGroup,
+        });
+        this.rounds.push(roundGroup);
+      }
+
+      // ラウンド後、待機ラウンド数を更新
+      for (let i = 0; i < playerCountForGeneration; i++) {
+        if (!usedInRound.has(i)) {
+          this.consecutiveRestCount[i]++;
+        } else {
+          this.consecutiveRestCount[i] = 0;
+        }
+      }
+    }
   }
 
   getRounds() {

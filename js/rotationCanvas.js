@@ -40,24 +40,33 @@ class RotationCanvas {
 
       // フォント設定
       fonts: {
-        titleSize: 24, // タイトル文字サイズ
+        titleSize: 24,
         titleFont: "bold 24px sans-serif",
-        subTitleSize: 14, // サブタイトル文字サイズ
+
+        subTitleSize: 14,
         subTitleFont: "14px sans-serif",
-        roundHeaderSize: 16, // ラウンドヘッダー文字サイズ
+
+        roundHeaderSize: 16,
         roundHeaderFont: "bold 16px sans-serif",
-        courtLabelSize: 12, // コート名文字サイズ
+
+        courtLabelSize: 12,
         courtLabelFont: "bold 12px sans-serif",
-        playerNameSize: 16, // プレイヤー名文字サイズ
+
+        playerNameSize: 16,
         playerNameFont: "bold 16px sans-serif",
-        statsSize: 12, // 統計情報文字サイズ（横並び）
+
+        statsSize: 12,
         statsFont: "12px sans-serif",
-        statsVerticalSize: 10, // 統計情報文字サイズ（縦並び）
+
+        statsVerticalSize: 10,
         statsVerticalFont: "10px sans-serif",
-        badgeNumberSize: 12, // バッジ番号文字サイズ
+
+        badgeNumberSize: 12,
         badgeNumberFont: "bold 12px sans-serif",
-        legendSize: 11, // 凡例文字サイズ
+
+        legendSize: 11,
         legendFont: "11px sans-serif",
+
         legendTitleFont: "bold 11px sans-serif",
       },
 
