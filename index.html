@@ -965,6 +965,33 @@
             ローテーション表を生成
           </button>
         </form>
+
+        <div
+          class="form-group"
+          style="
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+          "
+        >
+          <label for="displayRoundSelect">表示開始ラウンド（オプション）</label>
+          <select
+            id="displayRoundSelect"
+            style="
+              width: 100%;
+              padding: 12px 15px;
+              border: 2px solid #e0e0e0;
+              border-radius: 10px;
+              font-size: 16px;
+              font-family: inherit;
+            "
+          >
+            <option value="">全ラウンドを表示（1ラウンドから）</option>
+          </select>
+          <div class="form-help" style="margin-top: 5px">
+            ※指定したラウンド以降のすべてを表示します。未指定の場合は全ラウンドが表示されます。
+          </div>
+        </div>
       </div>
 
       <div class="loading" id="loading">

@@ -12,10 +12,13 @@
  */
 
 class RotationCanvas {
-  constructor(rotation, title, matchType) {
+  constructor(rotation, title, matchType, displayRoundNumber = null) {
     this.rotation = rotation;
     this.title = title;
     this.matchType = matchType;
+    this.displayRoundNumber = displayRoundNumber
+      ? parseInt(displayRoundNumber)
+      : null;
     this.canvas = document.getElementById("rotationCanvas");
     this.ctx = this.canvas.getContext("2d");
 
@@ -226,7 +229,16 @@ class RotationCanvas {
     // アイコン凡例の高さを追加
     totalHeight += 15 + 50 + 20; // 上余白 + 凡例高さ + 下余白
 
-    rounds.forEach((round) => {
+    // 表示対象のラウンドを決定
+    let roundsToDisplay = rounds;
+    if (this.displayRoundNumber) {
+      const roundIndex = this.displayRoundNumber - 1;
+      if (roundIndex >= 0 && roundIndex < rounds.length) {
+        roundsToDisplay = rounds.slice(roundIndex);
+      }
+    }
+
+    roundsToDisplay.forEach((round) => {
       totalHeight += 55; // ラウンドヘッダー（実際のdrawRotationと一致させる）
       totalHeight += round.length * (this.courtLabelHeight + this.courtHeight); // 各コートの高さ（コート名 + 本体）
       totalHeight += (round.length - 1) * this.courtGap; // コート間の余白
@@ -339,8 +351,13 @@ class RotationCanvas {
       this.padding + this.config.layout.titleTopMargin + this.titleHeight;
 
     rounds.forEach((round, roundIndex) => {
+      // displayRoundNumberが指定されている場合は、該当ラウンド前をスキップ
+      if (this.displayRoundNumber && roundIndex < this.displayRoundNumber - 1) {
+        return;
+      }
+
       // 第1ラウンドの前にアイコン凡例を表示
-      if (roundIndex === 0) {
+      if (roundIndex === 0 || (!this.displayRoundNumber && roundIndex === 0)) {
         currentY += 15; // 余白
         const legendHeight = this.drawLegend(currentY);
         currentY += legendHeight + 20; // 凡例の高さ + 余白

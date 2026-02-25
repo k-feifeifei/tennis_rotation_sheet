@@ -9,6 +9,7 @@ class UIController {
     this.playerCountSelect = document.getElementById("playerCount");
     this.courtCountSelect = document.getElementById("courtCount");
     this.roundCountSelect = document.getElementById("roundCount");
+    this.displayRoundSelect = document.getElementById("displayRoundSelect");
     this.matchSubTypeSelect = document.getElementById("matchSubType");
     this.matchFormatRadios = document.querySelectorAll(
       'input[name="matchFormat"]',
@@ -33,6 +34,7 @@ class UIController {
 
     this.bindEvents();
     this.updatePlayerCountOptions(); // 初期化時に参加人数オプションを設定
+    this.updateDisplayRoundOptions(); // 初期化時にラウンド表示オプションを設定
 
     // デフォルトタイトルを設定（年始からの日数を計算）
     this.setDefaultTitle();
@@ -104,6 +106,7 @@ class UIController {
       playerCount: this.playerCountSelect.value,
       courtCount: this.courtCountSelect.value,
       roundCount: this.roundCountSelect.value,
+      displayRound: this.displayRoundSelect.value,
       matchFormat: selectedFormat,
       matchSubType: this.matchSubTypeSelect.value,
       genders: this.getGenderSelections(),
@@ -214,6 +217,12 @@ class UIController {
         this.updateMatchSubTypeOptions();
         setTimeout(() => this.updateExcludeCheckboxes(), 0);
         setTimeout(() => this.updateAddPlayerCheckboxes(), 0);
+        setTimeout(() => {
+          this.updateDisplayRoundOptions();
+          if (saved.displayRound) {
+            this.displayRoundSelect.value = saved.displayRound;
+          }
+        }, 0);
         // 性別情報を復元
         if (saved.genders) {
           setTimeout(() => this.setGenderSelections(saved.genders), 0);
@@ -254,6 +263,7 @@ class UIController {
       // ラウンド数が変更されたら除外設定とプレイヤー追加設定UIも更新
       this.updateExcludeCheckboxes();
       this.updateAddPlayerCheckboxes();
+      this.updateDisplayRoundOptions();
       this.saveToLocalStorage();
     });
     this.matchSubTypeSelect.addEventListener("change", () => {
@@ -265,6 +275,9 @@ class UIController {
         this.updateGenderFields();
         this.saveToLocalStorage();
       });
+    });
+    this.displayRoundSelect.addEventListener("change", () => {
+      this.saveToLocalStorage();
     });
 
     // カスタム重みの変更を検知して自動保存
@@ -1185,6 +1198,35 @@ class UIController {
     }
   }
 
+  /**
+   * 表示ラウンド選択オプションを更新
+   */
+  updateDisplayRoundOptions() {
+    const roundCount = parseInt(this.roundCountSelect.value);
+    const currentValue = this.displayRoundSelect.value;
+
+    // 既存のオプションをクリア（「全ラウンドを表示」は保持）
+    while (this.displayRoundSelect.options.length > 1) {
+      this.displayRoundSelect.remove(1);
+    }
+
+    // 各ラウンドのオプションを追加
+    for (let i = 1; i <= roundCount; i++) {
+      const option = document.createElement("option");
+      option.value = i;
+      option.textContent = `第${i}ラウンドから`;
+      this.displayRoundSelect.appendChild(option);
+    }
+
+    // 以前選択されていた値が存在すれば復元
+    if (
+      currentValue &&
+      this.displayRoundSelect.querySelector(`option[value="${currentValue}"]`)
+    ) {
+      this.displayRoundSelect.value = currentValue;
+    }
+  }
+
   showError(message) {
     this.errorMessage.textContent = message;
     this.errorMessage.classList.add("show");
@@ -1608,7 +1650,13 @@ class UIController {
         console.log("プレイヤー追加処理完了");
       }
 
-      this.currentCanvas = new RotationCanvas(rotation, title, "doubles");
+      const displayRound = this.displayRoundSelect.value;
+      this.currentCanvas = new RotationCanvas(
+        rotation,
+        title,
+        "doubles",
+        displayRound,
+      );
       this.currentCanvas.draw();
 
       // デバッグモードの場合、テーブル形式の対戦表を生成
@@ -1845,10 +1893,12 @@ class UIController {
       this.currentParticipants.push(newPlayerName);
 
       // 結果を再描画
+      const displayRound = this.displayRoundSelect.value;
       this.currentCanvas = new RotationCanvas(
         this.currentRotation,
         this.currentTitle,
         "doubles",
+        displayRound,
       );
       this.currentCanvas.draw();
 
