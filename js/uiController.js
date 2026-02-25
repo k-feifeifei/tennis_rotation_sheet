@@ -1141,22 +1141,31 @@ class UIController {
 
     const rows = addPlayerCheckboxes.querySelectorAll("[id^='addPlayerRow_']");
     const settings = [];
+    const existingNames = Array.isArray(this.currentParticipants)
+      ? [...this.currentParticipants]
+      : [];
 
     rows.forEach((row) => {
       const nameInput = row.querySelector(".addPlayerName");
       const roundSelect = row.querySelector(".addPlayerRound");
       const genderSelect = row.querySelector(".addPlayerGender");
 
-      if (nameInput && roundSelect && nameInput.value.trim()) {
-        const startRound = parseInt(roundSelect.value);
-        const playerSetting = {
-          name: nameInput.value.trim(),
-          startRound: startRound,
-          gender: genderSelect ? genderSelect.value : null,
-        };
-        console.log("プレイヤー追加設定:", playerSetting);
-        settings.push(playerSetting);
+      if (!roundSelect) return;
+
+      const startRound = parseInt(roundSelect.value);
+      let playerName = nameInput ? nameInput.value.trim() : "";
+      if (!playerName) {
+        playerName = this.getNextAutoPlayerName(existingNames);
       }
+
+      const playerSetting = {
+        name: playerName,
+        startRound: startRound,
+        gender: genderSelect ? genderSelect.value : null,
+      };
+      existingNames.push(playerName);
+      console.log("プレイヤー追加設定:", playerSetting);
+      settings.push(playerSetting);
     });
 
     console.log("全プレイヤー追加設定:", settings);
@@ -1404,6 +1413,16 @@ class UIController {
     return names.slice(0, playerCount);
   }
 
+  getNextAutoPlayerName(existingNames) {
+    let index = existingNames.length + 1;
+    let name = `${index}`;
+    while (existingNames.includes(name)) {
+      index += 1;
+      name = `${index}`;
+    }
+    return name;
+  }
+
   getMatchType() {
     return "doubles";
   }
@@ -1607,6 +1626,13 @@ class UIController {
 
       this.resultSection.classList.add("show");
 
+      // canvas-containerのスクロールを最上部にリセット
+      const canvasContainer = document.querySelector(".canvas-container");
+      if (canvasContainer) {
+        canvasContainer.scrollTop = 0;
+        canvasContainer.scrollLeft = 0;
+      }
+
       setTimeout(() => {
         this.resultSection.scrollIntoView({
           behavior: "smooth",
@@ -1748,14 +1774,16 @@ class UIController {
    * プレイヤー追加を実行
    */
   confirmAddPlayer() {
-    const newPlayerName = document.getElementById("newPlayerName").value.trim();
+    let newPlayerName = document.getElementById("newPlayerName").value.trim();
     const addPlayerRound = parseInt(
       document.getElementById("addPlayerRound").value,
     );
 
     if (!newPlayerName) {
-      this.showError("プレイヤー名を入力してください");
-      return;
+      const existingNames = Array.isArray(this.currentParticipants)
+        ? [...this.currentParticipants]
+        : [];
+      newPlayerName = this.getNextAutoPlayerName(existingNames);
     }
 
     if (addPlayerRound > this.currentRotation.roundCount) {
@@ -1840,6 +1868,13 @@ class UIController {
         "doubles",
       );
       this.currentCanvas.draw();
+
+      // canvas-containerのスクロールを最上部にリセット
+      const canvasContainer = document.querySelector(".canvas-container");
+      if (canvasContainer) {
+        canvasContainer.scrollTop = 0;
+        canvasContainer.scrollLeft = 0;
+      }
 
       this.showLoading(false);
       this.showMessage(

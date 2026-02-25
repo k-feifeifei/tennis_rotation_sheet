@@ -41,33 +41,43 @@ class RotationCanvas {
       // フォント設定
       fonts: {
         titleSize: 24,
-        titleFont: "bold 24px sans-serif",
+        titleFont:
+          "bold 24px 'Noto Sans JP', 'Noto Sans SC', 'Noto Sans TC', 'Noto Sans KR', sans-serif",
 
         subTitleSize: 14,
-        subTitleFont: "14px sans-serif",
+        subTitleFont:
+          "14px 'Noto Sans JP', 'Noto Sans SC', 'Noto Sans TC', 'Noto Sans KR', sans-serif",
 
         roundHeaderSize: 16,
-        roundHeaderFont: "bold 16px sans-serif",
+        roundHeaderFont:
+          "bold 16px 'Noto Sans JP', 'Noto Sans SC', 'Noto Sans TC', 'Noto Sans KR', sans-serif",
 
         courtLabelSize: 12,
-        courtLabelFont: "bold 12px sans-serif",
+        courtLabelFont:
+          "bold 12px 'Noto Sans JP', 'Noto Sans SC', 'Noto Sans TC', 'Noto Sans KR', sans-serif",
 
         playerNameSize: 16,
-        playerNameFont: "bold 16px sans-serif",
+        playerNameFont:
+          "bold 16px 'Noto Sans JP', 'Noto Sans SC', 'Noto Sans TC', 'Noto Sans KR', sans-serif",
 
         statsSize: 12,
-        statsFont: "12px sans-serif",
+        statsFont:
+          "12px 'Noto Sans JP', 'Noto Sans SC', 'Noto Sans TC', 'Noto Sans KR', sans-serif",
 
         statsVerticalSize: 10,
-        statsVerticalFont: "10px sans-serif",
+        statsVerticalFont:
+          "10px 'Noto Sans JP', 'Noto Sans SC', 'Noto Sans TC', 'Noto Sans KR', sans-serif",
 
         badgeNumberSize: 12,
-        badgeNumberFont: "bold 12px sans-serif",
+        badgeNumberFont:
+          "bold 12px 'Noto Sans JP', 'Noto Sans SC', 'Noto Sans TC', 'Noto Sans KR', sans-serif",
 
         legendSize: 11,
-        legendFont: "11px sans-serif",
+        legendFont:
+          "11px 'Noto Sans JP', 'Noto Sans SC', 'Noto Sans TC', 'Noto Sans KR', sans-serif",
 
-        legendTitleFont: "bold 11px sans-serif",
+        legendTitleFont:
+          "bold 11px 'Noto Sans JP', 'Noto Sans SC', 'Noto Sans TC', 'Noto Sans KR', sans-serif",
       },
 
       // 色設定
@@ -255,8 +265,13 @@ class RotationCanvas {
     const maxWidth = this.canvasWidth - this.padding * 4;
 
     // 一時的にフォントを設定してテキスト測定
-    this.ctx.font = "bold 24px sans-serif";
-    const lines = this.wrapText(titleText, maxWidth, "bold 24px sans-serif");
+    this.ctx.font =
+      "bold 24px 'Noto Sans JP', 'Noto Sans SC', 'Noto Sans TC', 'Noto Sans KR', sans-serif";
+    const lines = this.wrapText(
+      titleText,
+      maxWidth,
+      "bold 24px 'Noto Sans JP', 'Noto Sans SC', 'Noto Sans TC', 'Noto Sans KR', sans-serif",
+    );
 
     const lineHeight = 28;
     const additionalHeight = Math.max(0, (lines.length - 1) * lineHeight);
@@ -287,7 +302,8 @@ class RotationCanvas {
 
     // タイトルテキスト
     this.ctx.fillStyle = "#ffffff";
-    this.ctx.font = "bold 24px sans-serif";
+    this.ctx.font =
+      "bold 24px 'Noto Sans JP', 'Noto Sans SC', 'Noto Sans TC', 'Noto Sans KR', sans-serif";
     this.ctx.textAlign = "center";
     this.ctx.textBaseline = "middle";
     // テキストに影をつける
@@ -307,7 +323,8 @@ class RotationCanvas {
     });
 
     // サブタイトル
-    this.ctx.font = "14px sans-serif";
+    this.ctx.font =
+      "14px 'Noto Sans JP', 'Noto Sans SC', 'Noto Sans TC', 'Noto Sans KR', sans-serif";
     this.ctx.fillText(
       `ダブルス 対戦表 ✨`,
       this.canvasWidth / 2,
@@ -375,13 +392,15 @@ class RotationCanvas {
 
     // タイトル
     this.ctx.fillStyle = "#555";
-    this.ctx.font = "bold 14px sans-serif";
+    this.ctx.font =
+      "bold 14px 'Noto Sans JP', 'Noto Sans SC', 'Noto Sans TC', 'Noto Sans KR', sans-serif";
     this.ctx.textAlign = "center";
     this.ctx.textBaseline = "top";
     this.ctx.fillText("アイコンの説明", this.canvasWidth / 2, legendY + 8);
 
     // アイコン説明（横並び）
-    this.ctx.font = "15px sans-serif";
+    this.ctx.font =
+      "15px 'Noto Sans JP', 'Noto Sans SC', 'Noto Sans TC', 'Noto Sans KR', sans-serif";
     this.ctx.fillStyle = "#666";
     const iconY = legendY + 28;
     const spacing = (this.canvasWidth - this.padding * 2) / 3;
@@ -417,7 +436,8 @@ class RotationCanvas {
     this.ctx.stroke();
 
     this.ctx.fillStyle = "#FF69B4";
-    this.ctx.font = "bold 16px sans-serif";
+    this.ctx.font =
+      "bold 16px 'Noto Sans JP', 'Noto Sans SC', 'Noto Sans TC', 'Noto Sans KR', sans-serif";
     this.ctx.textAlign = "center";
     this.ctx.textBaseline = "middle";
     this.ctx.fillText(
@@ -484,7 +504,8 @@ class RotationCanvas {
     // コート名（4枠の外側・上部）
     const courtLabel = String.fromCharCode(65 + courtIndex);
     this.ctx.fillStyle = "#FF69B4";
-    this.ctx.font = "bold 12px sans-serif";
+    this.ctx.font =
+      "bold 12px 'Noto Sans JP', 'Noto Sans SC', 'Noto Sans TC', 'Noto Sans KR', sans-serif";
     this.ctx.textAlign = "center";
     this.ctx.textBaseline = "bottom";
     this.ctx.fillText(`コート${courtLabel}`, x + this.courtWidth / 2, y - 5);
@@ -506,7 +527,8 @@ class RotationCanvas {
     this.ctx.stroke();
 
     this.ctx.fillStyle = "#FF69B4";
-    this.ctx.font = "bold 14px sans-serif";
+    this.ctx.font =
+      "bold 14px 'Noto Sans JP', 'Noto Sans SC', 'Noto Sans TC', 'Noto Sans KR', sans-serif";
     this.ctx.textAlign = "center";
     this.ctx.textBaseline = "middle";
     this.ctx.fillText("VS", vsX, vsY);
@@ -645,7 +667,8 @@ class RotationCanvas {
       this.ctx.shadowOffsetY = 1;
 
       this.ctx.fillStyle = "#FFFFFF";
-      this.ctx.font = "bold 12px sans-serif";
+      this.ctx.font =
+        "bold 12px 'Noto Sans JP', 'Noto Sans SC', 'Noto Sans TC', 'Noto Sans KR', sans-serif";
       this.ctx.textAlign = "center";
       this.ctx.textBaseline = "middle";
       this.ctx.fillText(playerNumber, badgeX, badgeY);
@@ -672,7 +695,8 @@ class RotationCanvas {
 
       // 性別に応じた色を設定（男性：青系、女性：赤系）
       this.ctx.fillStyle = playerGender === "F" ? "#E91E63" : "#1976D2";
-      this.ctx.font = "bold 20px sans-serif";
+      this.ctx.font =
+        "bold 20px 'Noto Sans JP', 'Noto Sans SC', 'Noto Sans TC', 'Noto Sans KR', sans-serif";
       this.ctx.textAlign = "center";
       this.ctx.textBaseline = "top";
       this.ctx.fillText(this.truncateText(playerName, maxWidth), x, currentY);
@@ -690,7 +714,8 @@ class RotationCanvas {
     if (playCount !== null && playCount !== undefined) {
       if (statsAlign && cellEdgeX !== null) {
         // 横並び表示（ダブルス用）
-        this.ctx.font = "12px sans-serif";
+        this.ctx.font =
+          "12px 'Noto Sans JP', 'Noto Sans SC', 'Noto Sans TC', 'Noto Sans KR', sans-serif";
         this.ctx.fillStyle = "#8B4789";
         this.ctx.textBaseline = "bottom";
         this.ctx.textAlign = statsAlign;
@@ -710,7 +735,8 @@ class RotationCanvas {
       } else {
         // 横並び表示（シングルス用）
         this.ctx.fillStyle = "#8B4789";
-        this.ctx.font = "12px sans-serif";
+        this.ctx.font =
+          "12px 'Noto Sans JP', 'Noto Sans SC', 'Noto Sans TC', 'Noto Sans KR', sans-serif";
         this.ctx.textAlign = "center";
         this.ctx.textBaseline = "top";
 
