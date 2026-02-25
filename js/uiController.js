@@ -25,8 +25,6 @@ class UIController {
     this.newBtnTop = document.getElementById("newBtnTop");
     this.downloadBtn = document.getElementById("downloadBtn");
     this.downloadBtnTop = document.getElementById("downloadBtnTop");
-    this.shareBtn = document.getElementById("shareBtn");
-    this.shareBtnTop = document.getElementById("shareBtnTop");
     this.resultSection = document.getElementById("resultSection");
     this.errorMessage = document.getElementById("errorMessage");
     this.loading = document.getElementById("loading");
@@ -637,14 +635,6 @@ class UIController {
 
     this.downloadBtnTop.addEventListener("click", () => {
       this.downloadImage();
-    });
-
-    this.shareBtn.addEventListener("click", () => {
-      this.shareUrl();
-    });
-
-    this.shareBtnTop.addEventListener("click", () => {
-      this.shareUrl();
     });
 
     // 試合形式が変更されたら対戦方式の表示を制御
@@ -1626,13 +1616,6 @@ class UIController {
 
       this.resultSection.classList.add("show");
 
-      // canvas-containerのスクロールを最上部にリセット
-      const canvasContainer = document.querySelector(".canvas-container");
-      if (canvasContainer) {
-        canvasContainer.scrollTop = 0;
-        canvasContainer.scrollLeft = 0;
-      }
-
       setTimeout(() => {
         this.resultSection.scrollIntoView({
           behavior: "smooth",
@@ -1868,13 +1851,6 @@ class UIController {
         "doubles",
       );
       this.currentCanvas.draw();
-
-      // canvas-containerのスクロールを最上部にリセット
-      const canvasContainer = document.querySelector(".canvas-container");
-      if (canvasContainer) {
-        canvasContainer.scrollTop = 0;
-        canvasContainer.scrollLeft = 0;
-      }
 
       this.showLoading(false);
       this.showMessage(
