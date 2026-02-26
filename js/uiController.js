@@ -971,11 +971,11 @@ class UIController {
             <label style="display: flex; align-items: center; cursor: pointer;">
               <input type="radio" name="gender_${i}" id="gender_${i}_M" value="M" ${
                 checkedM || defaultChecked
-              } style="margin-right: 5px;" onchange="document.getElementById('card_${i}').style.background='#E3F2FD'; document.getElementById('card_${i}').style.borderColor='#90CAF9'; uiController.syncGenderToInput(${i}, 'M'); uiController.saveToLocalStorage();">
+              } style="margin-right: 5px;" onchange="document.getElementById('card_${i}').style.background='#E3F2FD'; document.getElementById('card_${i}').style.borderColor='#90CAF9'; uiController.saveToLocalStorage();">
               <span style="font-weight: 500;">👨 男性</span>
             </label>
             <label style="display: flex; align-items: center; cursor: pointer;">
-              <input type="radio" name="gender_${i}" id="gender_${i}_F" value="F" ${checkedF} style="margin-right: 5px;" onchange="document.getElementById('card_${i}').style.background='#FFEEF5'; document.getElementById('card_${i}').style.borderColor='#FFB6D9'; uiController.syncGenderToInput(${i}, 'F'); uiController.saveToLocalStorage();">
+              <input type="radio" name="gender_${i}" id="gender_${i}_F" value="F" ${checkedF} style="margin-right: 5px;" onchange="document.getElementById('card_${i}').style.background='#FFEEF5'; document.getElementById('card_${i}').style.borderColor='#FFB6D9'; uiController.saveToLocalStorage();">
               <span style="font-weight: 500;">👩 女性</span>
             </label>
           </div>
@@ -1696,26 +1696,46 @@ class UIController {
       return;
     }
 
-    // 名前のみを取得（性別情報は削除）
-    let names = this.participantsInput.value
+    // 名前と性別のペアを取得
+    const playerCount = parseInt(this.playerCountSelect.value) || 0;
+    let players = this.participantsInput.value
       .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0)
-      .map((line) => line.replace(/\|[MF]$/, "")); // 性別情報を削除
+      .map((line, index) => {
+        const trimmed = line.trim();
+        if (trimmed.length === 0) return null;
 
-    if (names.length < 2) {
+        // 名前から性別情報を削除
+        const name = trimmed.replace(/\|[MF]$/, "");
+
+        // 現在の性別選択を取得
+        let gender = null;
+        if (index < playerCount) {
+          const mRadio = document.getElementById(`gender_${index}_M`);
+          const fRadio = document.getElementById(`gender_${index}_F`);
+          if (mRadio && mRadio.checked) {
+            gender = "M";
+          } else if (fRadio && fRadio.checked) {
+            gender = "F";
+          }
+        }
+
+        return { name, gender };
+      })
+      .filter((player) => player !== null);
+
+    if (players.length < 2) {
       this.showError("ランダムにするには2名以上必要です");
       return;
     }
 
-    // Fisher-Yates シャッフルアルゴリズム
-    for (let i = names.length - 1; i > 0; i--) {
+    // Fisher-Yates シャッフルアルゴリズム（名前と性別のペアをシャッフル）
+    for (let i = players.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [names[i], names[j]] = [names[j], names[i]];
+      [players[i], players[j]] = [players[j], players[i]];
     }
 
-    // ランダム順をテキストエリアに反映（性別情報なし）
-    this.participantsInput.value = names.join("\n");
+    // ランダム順をテキストエリアに反映（名前のみ、性別情報なし）
+    this.participantsInput.value = players.map((p) => p.name).join("\n");
 
     // 参加者数を更新
     this.updateParticipantCount();
@@ -1723,11 +1743,43 @@ class UIController {
     // 性別チェックボックスを更新
     this.updateGenderCheckboxes();
 
+    // シャッフル後の性別を反映
+    setTimeout(() => {
+      players.forEach((player, index) => {
+        if (player.gender === "M") {
+          const radio = document.getElementById(`gender_${index}_M`);
+          if (radio) {
+            radio.checked = true;
+            // カード背景色を青系に変更
+            const card = document.getElementById(`card_${index}`);
+            if (card) {
+              card.style.background = "#E3F2FD";
+              card.style.borderColor = "#90CAF9";
+            }
+          }
+        } else if (player.gender === "F") {
+          const radio = document.getElementById(`gender_${index}_F`);
+          if (radio) {
+            radio.checked = true;
+            // カード背景色をピンク系に変更
+            const card = document.getElementById(`card_${index}`);
+            if (card) {
+              card.style.background = "#FFEEF5";
+              card.style.borderColor = "#FFB6D9";
+            }
+          }
+        }
+      });
+
+      // 性別復元後に保存処理を実行
+      this.saveToLocalStorage();
+    }, 0);
+
     // 成功メッセージ
     const originalError = this.errorMessage.style.backgroundColor;
     this.errorMessage.style.backgroundColor = "#e8f5e9";
     this.errorMessage.style.color = "#2e7d32";
-    this.errorMessage.textContent = `✓ ${names.length}名をランダム順に並べ替えました`;
+    this.errorMessage.textContent = `✓ ${players.length}名をランダム順に並べ替えました`;
     this.errorMessage.classList.add("show");
     setTimeout(() => {
       this.errorMessage.classList.remove("show");
@@ -1736,9 +1788,6 @@ class UIController {
         this.errorMessage.style.color = "#c33";
       }, 300);
     }, 2000);
-
-    // ランダム後の内容を保存
-    this.saveToLocalStorage();
   }
 
   /**
