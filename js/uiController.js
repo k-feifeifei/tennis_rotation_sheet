@@ -935,6 +935,35 @@ class UIController {
         }
       }
     });
+
+    // プレイヤー除外行の性別フィールドを更新
+    const excludeRows = document.querySelectorAll("[id^='excludeRow_']");
+    excludeRows.forEach((row) => {
+      const existingGender = row.querySelector(".excludePlayerGender");
+      const deleteButton = row.querySelector(
+        "button[onclick*='removeExcludeRow']",
+      );
+
+      if (needsGender && !existingGender && deleteButton) {
+        // 性別フィールドを追加
+        const genderHtml = `
+          <div class="gender-field" style="flex: 0 0 120px;">
+            <label style="display: block; margin-bottom: 5px; font-weight: 500; color: #666; font-size: 12px;">性別</label>
+            <select class="excludePlayerGender" style="width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 12px;">
+              <option value="M">👨 男性</option>
+              <option value="F">👩 女性</option>
+            </select>
+          </div>
+        `;
+        deleteButton.insertAdjacentHTML("beforebegin", genderHtml);
+      } else if (!needsGender && existingGender) {
+        // 性別フィールドを削除
+        const genderField = existingGender.closest(".gender-field");
+        if (genderField) {
+          genderField.remove();
+        }
+      }
+    });
   }
 
   /**
@@ -1033,6 +1062,26 @@ class UIController {
       roundOptions += `<option value="${i}">第${i}ラウンド</option>`;
     }
 
+    // ミックス対応時の性別選択
+    const selectedFormat = Array.from(this.matchFormatRadios).find(
+      (radio) => radio.checked,
+    )?.value;
+    const matchSubType = this.matchSubTypeSelect.value;
+    const needsGender =
+      selectedFormat === "doubles-mixed" || matchSubType === "mixed";
+
+    const genderHtml = needsGender
+      ? `
+      <div class="gender-field" style="flex: 0 0 120px;">
+        <label style="display: block; margin-bottom: 5px; font-weight: 500; color: #666; font-size: 12px;">性別</label>
+        <select class="excludePlayerGender" style="width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 12px;">
+          <option value="M">👨 男性</option>
+          <option value="F">👩 女性</option>
+        </select>
+      </div>
+    `
+      : "";
+
     const html = `
       <div id="${rowId}" style="border: 1px solid #ddd; border-radius: 6px; padding: 12px; background: #f9f9f9; display: flex; gap: 10px; align-items: end;">
         <div style="flex: 1;">
@@ -1047,6 +1096,7 @@ class UIController {
             ${roundOptions}
           </select>
         </div>
+        ${genderHtml}
         <button type="button" onclick="uiController.removeExcludeRow('${rowId}')" style="padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; height: 32px;">削除</button>
       </div>
     `;
