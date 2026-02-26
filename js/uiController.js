@@ -1156,17 +1156,16 @@ class UIController {
       if (!roundSelect) return;
 
       const startRound = parseInt(roundSelect.value);
-      let playerName = nameInput ? nameInput.value.trim() : "";
-      if (!playerName) {
-        playerName = this.getNextAutoPlayerName(existingNames);
-      }
+      const playerName = nameInput ? nameInput.value.trim() : "";
 
       const playerSetting = {
         name: playerName,
         startRound: startRound,
         gender: genderSelect ? genderSelect.value : null,
       };
-      existingNames.push(playerName);
+      if (playerName) {
+        existingNames.push(playerName);
+      }
       console.log("プレイヤー追加設定:", playerSetting);
       settings.push(playerSetting);
     });
@@ -1426,18 +1425,23 @@ class UIController {
       .map((line) => line.trim())
       .filter((line) => line.length > 0);
 
-    // 参加者名が入力されていない場合は番号のみで生成
+    // 参加者名が入力されていない場合は空文字列で生成
     if (lines.length === 0) {
-      return Array.from({ length: playerCount }, (_, i) => `${i + 1}`);
+      return Array.from({ length: playerCount }, () => "");
     }
 
-    const names = [...lines];
+    // 各行から性別情報（|M, |F など）を除外して名前だけを取得
+    const names = lines.map((line) => {
+      // | で分割して最初の部分（名前）だけを取得
+      const parts = line.split("|");
+      return parts[0].trim();
+    });
 
-    // 入力された名前を使用し、不足分は番号で補完
+    // 入力された名前を使用し、不足分は空文字列で補完
     if (names.length < playerCount) {
       const remaining = playerCount - names.length;
       for (let i = 0; i < remaining; i++) {
-        names.push(`${names.length + 1}`);
+        names.push("");
       }
     }
 

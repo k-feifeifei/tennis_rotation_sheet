@@ -619,12 +619,19 @@ class RotationCanvas {
     let playerName = name;
     let playerGender = "M"; // デフォルトは男性
 
-    // フォーマット: "1. 太郎|M" または "1. 花子|F"
+    // フォーマット: "1. 太郎|M" または "1. 花子|F" または "1|M" (名前が空の場合)
     const nameMatch = name.match(/^(\d+)\. (.+?)\|([MF])$/);
+    const emptyNameMatch = name.match(/^(\d+)\|([MF])$/);
+
     if (nameMatch) {
       playerNumber = nameMatch[1];
       playerName = nameMatch[2];
       playerGender = nameMatch[3];
+    } else if (emptyNameMatch) {
+      // 名前が空で番号と性別のみの場合 "1|M"
+      playerNumber = emptyNameMatch[1];
+      playerName = "";
+      playerGender = emptyNameMatch[2];
     } else if (name.match(/^(\d+)\. (.+)$/)) {
       // 性別情報がない場合（後方互換性）
       const match = name.match(/^(\d+)\. (.+)$/);

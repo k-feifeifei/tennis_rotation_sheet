@@ -227,7 +227,10 @@ class RotationGenerator {
       this.genders && this.genders[playerId] ? this.genders[playerId] : "M";
 
     // プレイヤー名に番号と性別情報を付与
-    const formattedName = `${playerNumber}. ${playerName}|${gender}`;
+    // 名前が空の場合は番号のみ
+    const formattedName = playerName
+      ? `${playerNumber}. ${playerName}|${gender}`
+      : `${playerNumber}|${gender}`;
 
     console.log(
       `createPlayerStats: ID=${playerId}, Name=${playerName}, Gender=${gender}, PlayCount=${this.playCount[playerId]}`,
@@ -783,7 +786,7 @@ class RotationGenerator {
     newPlayerGender = null,
   ) {
     // 入力検証
-    if (!newPlayerName || typeof newPlayerName !== "string") {
+    if (typeof newPlayerName !== "string") {
       throw new Error("プレイヤー名が無効です");
     }
     // startRoundはroundCount（予定ラウンド数）まで許可
