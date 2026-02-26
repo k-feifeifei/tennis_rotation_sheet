@@ -37,6 +37,9 @@ class RotationGenerator {
     this.debugLogs = [];
     this.excludedPlayers = new Set(); // 除外プレイヤーのインデックスを管理
     this.excludeSettingsMap = excludeSettingsMap; // 除外設定: {playerIndex: startRound}
+    this.lastRoundMatches = [];
+    this.lastRoundPartners = new Set();
+    this.lastRoundOpponents = new Set();
 
     // 対戦方式に応じた重み設定を適用
     this.applyWeightsPreset(matchSubType);
@@ -124,6 +127,7 @@ class RotationGenerator {
   generateDoublesRotation(playerCount, maxRounds) {
     for (let round = 0; round < maxRounds; round++) {
       const currentRound = round + 1; // 1-based round number
+      this.setLastRoundRelations(this.lastRoundMatches);
       this.addLog(`\n========== 第${currentRound}ラウンド ==========`);
       const usedInRound = new Set();
       const roundMatches = [];
@@ -157,6 +161,8 @@ class RotationGenerator {
           this.consecutiveRestCount[i] = 0;
         }
       }
+
+      this.lastRoundMatches = roundMatches;
     }
   }
 
@@ -257,6 +263,47 @@ class RotationGenerator {
    */
   getConsecutivePartners(player1, player2) {
     return this.partnerHistory[player1][player2];
+  }
+
+  getPairKey(player1, player2) {
+    return player1 < player2 ? `${player1}-${player2}` : `${player2}-${player1}`;
+  }
+
+  buildRoundRelationSets(matches) {
+    const partners = new Set();
+    const opponents = new Set();
+
+    matches.forEach((match) => {
+      const team1 = [match.t1p1, match.t1p2];
+      const team2 = [match.t2p1, match.t2p2];
+
+      partners.add(this.getPairKey(team1[0], team1[1]));
+      partners.add(this.getPairKey(team2[0], team2[1]));
+
+      team1.forEach((p1) => {
+        team2.forEach((p2) => {
+          opponents.add(this.getPairKey(p1, p2));
+        });
+      });
+    });
+
+    return { partners, opponents };
+  }
+
+  setLastRoundRelations(matches) {
+    const { partners, opponents } = this.buildRoundRelationSets(matches || []);
+    this.lastRoundPartners = partners;
+    this.lastRoundOpponents = opponents;
+  }
+
+  wasConsecutivePartner(player1, player2) {
+    if (!this.lastRoundPartners) return false;
+    return this.lastRoundPartners.has(this.getPairKey(player1, player2));
+  }
+
+  wasConsecutiveOpponent(player1, player2) {
+    if (!this.lastRoundOpponents) return false;
+    return this.lastRoundOpponents.has(this.getPairKey(player1, player2));
   }
 
   /**
@@ -481,6 +528,12 @@ class RotationGenerator {
           this.consecutiveRestCount[player] *
           SCORING_WEIGHTS.POS2_CONSECUTIVE_REST;
         const playerNumberScore = player * SCORING_WEIGHTS.POS2_PLAYER_NUMBER;
+        const consecutivePartnerPenalty = this.wasConsecutivePartner(
+          pos1Player,
+          player,
+        )
+          ? SCORING_WEIGHTS.CONSECUTIVE_PARTNER_PENALTY
+          : 0;
 
         // 男女混合ペアのボーナスを計算（ダブルス(ミックス優先)の場合のみ）
         let mixedBonusScore = 0;
@@ -502,7 +555,8 @@ class RotationGenerator {
           playCountScore +
           consecutiveRestScore +
           playerNumberScore +
-          mixedBonusScore;
+          mixedBonusScore +
+          consecutivePartnerPenalty;
         return {
           player,
           score,
@@ -512,6 +566,7 @@ class RotationGenerator {
           consecutiveRestScore,
           playerNumberScore,
           mixedBonusScore,
+          consecutivePartnerPenalty,
         };
       });
 
@@ -588,6 +643,13 @@ class RotationGenerator {
           this.consecutiveRestCount[player] *
           SCORING_WEIGHTS.POS3_CONSECUTIVE_REST;
         const playerNumberScore = player * SCORING_WEIGHTS.POS3_PLAYER_NUMBER;
+        const consecutiveOpponentPenalty =
+          (this.wasConsecutiveOpponent(pos1Player, player)
+            ? SCORING_WEIGHTS.CONSECUTIVE_OPPONENT_PENALTY
+            : 0) +
+          (this.wasConsecutiveOpponent(pos2Player, player)
+            ? SCORING_WEIGHTS.CONSECUTIVE_OPPONENT_PENALTY
+            : 0);
         const score =
           pos1PartnerHistoryScore +
           pos1MatchHistoryScore +
@@ -595,7 +657,8 @@ class RotationGenerator {
           pos2MatchHistoryScore +
           playCountScore +
           consecutiveRestScore +
-          playerNumberScore;
+          playerNumberScore +
+          consecutiveOpponentPenalty;
         return {
           player,
           score,
@@ -606,6 +669,7 @@ class RotationGenerator {
           playCountScore,
           consecutiveRestScore,
           playerNumberScore,
+          consecutiveOpponentPenalty,
         };
       });
 
@@ -702,6 +766,19 @@ class RotationGenerator {
           this.consecutiveRestCount[player] *
           SCORING_WEIGHTS.POS4_CONSECUTIVE_REST;
         const playerNumberScore = player * SCORING_WEIGHTS.POS4_PLAYER_NUMBER;
+        const consecutivePartnerPenalty = this.wasConsecutivePartner(
+          pos3Player,
+          player,
+        )
+          ? SCORING_WEIGHTS.CONSECUTIVE_PARTNER_PENALTY
+          : 0;
+        const consecutiveOpponentPenalty =
+          (this.wasConsecutiveOpponent(pos1Player, player)
+            ? SCORING_WEIGHTS.CONSECUTIVE_OPPONENT_PENALTY
+            : 0) +
+          (this.wasConsecutiveOpponent(pos2Player, player)
+            ? SCORING_WEIGHTS.CONSECUTIVE_OPPONENT_PENALTY
+            : 0);
 
         // 男女混合ペアのボーナスを計算（ポジション3とのペア）
         let mixedBonusScore = 0;
@@ -727,7 +804,9 @@ class RotationGenerator {
           playCountScore +
           consecutiveRestScore +
           playerNumberScore +
-          mixedBonusScore;
+          mixedBonusScore +
+          consecutivePartnerPenalty +
+          consecutiveOpponentPenalty;
         return {
           player,
           score,
@@ -741,6 +820,8 @@ class RotationGenerator {
           consecutiveRestScore,
           playerNumberScore,
           mixedBonusScore,
+          consecutivePartnerPenalty,
+          consecutiveOpponentPenalty,
         };
       });
 

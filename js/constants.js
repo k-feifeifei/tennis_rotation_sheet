@@ -64,6 +64,10 @@ const SCORING_WEIGHTS = {
   POS4_CONSECUTIVE_REST: 15, // 連続待機回数の重み（正値：多いほど高評価）
   POS4_PLAYER_NUMBER: -0.01, // プレイヤー番号の重み（負値：番号が小さいほど高評価）
 
+  // 連続で同じ相手との対戦/ペアを避けるためのペナルティ
+  CONSECUTIVE_PARTNER_PENALTY: -120, // 直前ラウンドと同じペアは減点
+  CONSECUTIVE_OPPONENT_PENALTY: -80, // 直前ラウンドと同じ対戦相手は減点
+
   // ========== 男女混合重視用の追加重み ==========
   MIXED_BONUS: 15, // 男女混合ペアのボーナス（正値：男女混合は高評価）
 };
@@ -95,6 +99,9 @@ const SCORING_WEIGHTS_PRESETS = {
     POS4_MATCH_HISTORY: -20,
 
     MIXED_BONUS: 20,
+
+    CONSECUTIVE_PARTNER_PENALTY: -120,
+    CONSECUTIVE_OPPONENT_PENALTY: -100,
   },
 
   // 多様性重視型
@@ -122,6 +129,9 @@ const SCORING_WEIGHTS_PRESETS = {
     POS4_CONSECUTIVE_REST: 20,
 
     MIXED_BONUS: 20,
+
+    CONSECUTIVE_PARTNER_PENALTY: -120,
+    CONSECUTIVE_OPPONENT_PENALTY: -100,
   },
 
   // 男女混合重視型
@@ -149,6 +159,9 @@ const SCORING_WEIGHTS_PRESETS = {
     POS4_MATCH_HISTORY: -10,
 
     MIXED_BONUS: 100,
+
+    CONSECUTIVE_PARTNER_PENALTY: -120,
+    CONSECUTIVE_OPPONENT_PENALTY: -100,
   },
 
   // カスタマイズ方式
@@ -177,6 +190,9 @@ const SCORING_WEIGHTS_PRESETS = {
     POS4_PLAYER_NUMBER: -0.01,
 
     MIXED_BONUS: 20,
+
+    CONSECUTIVE_PARTNER_PENALTY: -120,
+    CONSECUTIVE_OPPONENT_PENALTY: -100,
   },
 };
 
