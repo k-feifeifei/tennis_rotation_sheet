@@ -784,30 +784,30 @@ class UIController {
     let html = "";
     for (let i = 0; i < playerCount; i++) {
       const inputLine = inputLines[i] || "";
-      
+
       // 性別情報を抽出（|M または |F）
       let playerName = inputLine;
       let genderFromInput = null;
-      
+
       const genderMatch = inputLine.match(/^(.+?)\|([MF])$/);
       if (genderMatch) {
         playerName = genderMatch[1].trim();
         genderFromInput = genderMatch[2];
       }
-      
+
       if (!playerName) {
         playerName = `プレイヤー${i + 1}`;
       }
-      
+
       const label = `${i + 1}. ${playerName}`;
 
       // 現在の選択状態を保持（入力から性別情報があればそれを優先）
       const currentM = document.getElementById(`gender_${i}_M`);
       const currentF = document.getElementById(`gender_${i}_F`);
-      
+
       let checkedM = "";
       let checkedF = "";
-      
+
       if (genderFromInput) {
         // 入力に性別情報がある場合はそれを使用
         checkedM = genderFromInput === "M" ? "checked" : "";
@@ -817,7 +817,7 @@ class UIController {
         checkedM = currentM && currentM.checked ? "checked" : "";
         checkedF = currentF && currentF.checked ? "checked" : "";
       }
-      
+
       const defaultChecked = !checkedM && !checkedF ? "checked" : "";
 
       // デフォルトでは男性が選択されているため、カード全体の背景色を青系に
@@ -854,21 +854,21 @@ class UIController {
   syncGenderToInput(playerIndex, gender) {
     const text = this.participantsInput.value;
     const lines = text.split("\n");
-    
+
     // 該当行を取得
     let line = lines[playerIndex] || "";
     line = line.trim();
-    
+
     // 既存の性別情報を削除
     line = line.replace(/\|[MF]$/, "");
-    
+
     // 新しい性別情報を追加
     if (line) {
       lines[playerIndex] = `${line}|${gender}`;
     } else {
       lines[playerIndex] = `|${gender}`;
     }
-    
+
     // テキストエリアを更新
     this.participantsInput.value = lines.join("\n");
   }
@@ -879,23 +879,23 @@ class UIController {
   applySavedGendersToInput() {
     const playerCount = parseInt(this.playerCountSelect.value);
     if (!playerCount) return;
-    
+
     const text = this.participantsInput.value;
     const lines = text.split("\n");
-    
+
     // 各プレイヤーの性別チェックボックスの状態を取得してテキストに反映
     for (let i = 0; i < playerCount; i++) {
       const mRadio = document.getElementById(`gender_${i}_M`);
       const fRadio = document.getElementById(`gender_${i}_F`);
-      
+
       if (!mRadio && !fRadio) continue; // チェックボックスが存在しない場合はスキップ
-      
+
       let line = lines[i] || "";
       line = line.trim();
-      
+
       // 既存の性別情報を削除
       line = line.replace(/\|[MF]$/, "");
-      
+
       // 選択されている性別を追加
       let gender = null;
       if (mRadio && mRadio.checked) {
@@ -903,7 +903,7 @@ class UIController {
       } else if (fRadio && fRadio.checked) {
         gender = "F";
       }
-      
+
       if (gender) {
         if (line) {
           lines[i] = `${line}|${gender}`;
@@ -914,7 +914,7 @@ class UIController {
         lines[i] = line;
       }
     }
-    
+
     // テキストエリアを更新
     this.participantsInput.value = lines.join("\n");
   }
@@ -1453,7 +1453,7 @@ class UIController {
           name = genderMatch[1].trim();
           gender = genderMatch[2];
         }
-        
+
         // 半角数字 + 区切り文字（. ) : など）を削除
         let formatted = name.replace(/^\d+[.):：)）]\s*/, "");
         // 全角数字 + 区切り文字を削除
@@ -1464,17 +1464,17 @@ class UIController {
         formatted = formatted.replace(/^\(\d+\)\s*/, "");
         formatted = formatted.replace(/^（\d+）\s*/, "");
         formatted = formatted.trim();
-        
+
         // 性別情報を再付加
         if (gender) {
           formatted = `${formatted}|${gender}`;
         }
-        
+
         return formatted;
       })
       .filter((entry) => {
         // |M または |F のみのエントリーを除外
-        return entry.length > 0 && entry !== '|M' && entry !== '|F';
+        return entry.length > 0 && entry !== "|M" && entry !== "|F";
       });
 
     // 3. 重複を削除
@@ -1485,7 +1485,7 @@ class UIController {
 
     // 参加者数を更新
     this.updateParticipantCount();
-    
+
     // 性別チェックボックスを更新
     this.updateGenderCheckboxes();
 
@@ -1536,7 +1536,7 @@ class UIController {
 
     // 参加者数を更新
     this.updateParticipantCount();
-    
+
     // 性別チェックボックスを更新（性別情報がある場合に反映）
     this.updateGenderCheckboxes();
 
