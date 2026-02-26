@@ -266,7 +266,9 @@ class RotationGenerator {
   }
 
   getPairKey(player1, player2) {
-    return player1 < player2 ? `${player1}-${player2}` : `${player2}-${player1}`;
+    return player1 < player2
+      ? `${player1}-${player2}`
+      : `${player2}-${player1}`;
   }
 
   buildRoundRelationSets(matches) {
@@ -534,6 +536,12 @@ class RotationGenerator {
         )
           ? SCORING_WEIGHTS.CONSECUTIVE_PARTNER_PENALTY
           : 0;
+        const consecutiveOpponentPenalty = this.wasConsecutiveOpponent(
+          pos1Player,
+          player,
+        )
+          ? SCORING_WEIGHTS.CONSECUTIVE_OPPONENT_PENALTY
+          : 0;
 
         // 男女混合ペアのボーナスを計算（ダブルス(ミックス優先)の場合のみ）
         let mixedBonusScore = 0;
@@ -556,7 +564,8 @@ class RotationGenerator {
           consecutiveRestScore +
           playerNumberScore +
           mixedBonusScore +
-          consecutivePartnerPenalty;
+          consecutivePartnerPenalty +
+          consecutiveOpponentPenalty;
         return {
           player,
           score,
@@ -567,6 +576,7 @@ class RotationGenerator {
           playerNumberScore,
           mixedBonusScore,
           consecutivePartnerPenalty,
+          consecutiveOpponentPenalty,
         };
       });
 
@@ -643,6 +653,13 @@ class RotationGenerator {
           this.consecutiveRestCount[player] *
           SCORING_WEIGHTS.POS3_CONSECUTIVE_REST;
         const playerNumberScore = player * SCORING_WEIGHTS.POS3_PLAYER_NUMBER;
+        const consecutivePartnerPenalty =
+          (this.wasConsecutivePartner(pos1Player, player)
+            ? SCORING_WEIGHTS.CONSECUTIVE_PARTNER_PENALTY
+            : 0) +
+          (this.wasConsecutivePartner(pos2Player, player)
+            ? SCORING_WEIGHTS.CONSECUTIVE_PARTNER_PENALTY
+            : 0);
         const consecutiveOpponentPenalty =
           (this.wasConsecutiveOpponent(pos1Player, player)
             ? SCORING_WEIGHTS.CONSECUTIVE_OPPONENT_PENALTY
@@ -658,6 +675,7 @@ class RotationGenerator {
           playCountScore +
           consecutiveRestScore +
           playerNumberScore +
+          consecutivePartnerPenalty +
           consecutiveOpponentPenalty;
         return {
           player,
@@ -669,6 +687,7 @@ class RotationGenerator {
           playCountScore,
           consecutiveRestScore,
           playerNumberScore,
+          consecutivePartnerPenalty,
           consecutiveOpponentPenalty,
         };
       });
@@ -766,17 +785,24 @@ class RotationGenerator {
           this.consecutiveRestCount[player] *
           SCORING_WEIGHTS.POS4_CONSECUTIVE_REST;
         const playerNumberScore = player * SCORING_WEIGHTS.POS4_PLAYER_NUMBER;
-        const consecutivePartnerPenalty = this.wasConsecutivePartner(
-          pos3Player,
-          player,
-        )
-          ? SCORING_WEIGHTS.CONSECUTIVE_PARTNER_PENALTY
-          : 0;
+        const consecutivePartnerPenalty =
+          (this.wasConsecutivePartner(pos3Player, player)
+            ? SCORING_WEIGHTS.CONSECUTIVE_PARTNER_PENALTY
+            : 0) +
+          (this.wasConsecutivePartner(pos1Player, player)
+            ? SCORING_WEIGHTS.CONSECUTIVE_PARTNER_PENALTY
+            : 0) +
+          (this.wasConsecutivePartner(pos2Player, player)
+            ? SCORING_WEIGHTS.CONSECUTIVE_PARTNER_PENALTY
+            : 0);
         const consecutiveOpponentPenalty =
           (this.wasConsecutiveOpponent(pos1Player, player)
             ? SCORING_WEIGHTS.CONSECUTIVE_OPPONENT_PENALTY
             : 0) +
           (this.wasConsecutiveOpponent(pos2Player, player)
+            ? SCORING_WEIGHTS.CONSECUTIVE_OPPONENT_PENALTY
+            : 0) +
+          (this.wasConsecutiveOpponent(pos3Player, player)
             ? SCORING_WEIGHTS.CONSECUTIVE_OPPONENT_PENALTY
             : 0);
 
