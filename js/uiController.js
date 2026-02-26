@@ -32,6 +32,9 @@ class UIController {
 
     this.currentCanvas = null;
 
+    // 復元フラグ
+    this._isRestoring = false;
+
     this.bindEvents();
     this.updatePlayerCountOptions(); // 初期化時に参加人数オプションを設定
     this.updateDisplayRoundOptions(); // 初期化時にラウンド表示オプションを設定
@@ -111,6 +114,7 @@ class UIController {
       matchSubType: this.matchSubTypeSelect.value,
       genders: this.getGenderSelections(),
       excludeSettings: this.getExcludeSettings(),
+      addPlayerSettings: this.getAddPlayerSettings(),
       timestamp: Date.now(), // 保存時刻を記録（ミリ秒単位）
     };
 
@@ -133,6 +137,21 @@ class UIController {
    * - 保存時刻 + 12時間 > 現在時刻 → 復元
    * - 保存時刻 + 12時間 <= 現在時刻 → 削除して初期化
    */
+  /**
+   * 参加者テキストから性別情報を削除して名前のみ抽出
+   * @param {string} participantsText - 性別情報を含む参加者テキスト
+   * @returns {string} 名前のみのテキスト
+   */
+  extractNamesOnly(participantsText) {
+    return participantsText
+      .split("\n")
+      .map((line) => {
+        // 性別情報（|M または |F）を削除
+        return line.replace(/\|[MF]$/, "");
+      })
+      .join("\n");
+  }
+
   loadFromLocalStorage() {
     // URLパラメータをチェック
     const urlParams = new URLSearchParams(window.location.search);
@@ -142,7 +161,9 @@ class UIController {
         this.titleInput.value = urlParams.get("title");
       }
       if (urlParams.has("participants")) {
-        this.participantsInput.value = urlParams.get("participants");
+        this.participantsInput.value = this.extractNamesOnly(
+          urlParams.get("participants"),
+        );
       }
       if (urlParams.has("playerCount")) {
         this.playerCountSelect.value = urlParams.get("playerCount");
@@ -154,14 +175,20 @@ class UIController {
         this.roundCountSelect.value = urlParams.get("roundCount");
       }
       if (urlParams.has("matchFormat")) {
+        this._isRestoring = true;
         const formatRadio = Array.from(this.matchFormatRadios).find(
           (radio) => radio.value === urlParams.get("matchFormat"),
         );
         if (formatRadio) {
           formatRadio.checked = true;
+          // changeイベントを発火させてupdateGenderFields()を呼ぶ
+          formatRadio.dispatchEvent(new Event("change", { bubbles: true }));
         }
       }
       if (urlParams.has("matchSubType")) {
+        if (!this._isRestoring) {
+          this._isRestoring = true;
+        }
         this.matchSubTypeSelect.value = urlParams.get("matchSubType");
       }
       if (urlParams.has("genders")) {
@@ -173,6 +200,7 @@ class UIController {
       this.updateParticipantCount();
       this.toggleGenderInput();
       this.updateMatchSubTypeOptions();
+      this._isRestoring = false;
       setTimeout(() => this.updateExcludeCheckboxes(), 0);
       setTimeout(() => this.updateAddPlayerCheckboxes(), 0);
       return;
@@ -196,18 +224,23 @@ class UIController {
         }
 
         this.titleInput.value = saved.title || this.titleInput.value;
-        this.participantsInput.value = saved.participants || "";
+        this.participantsInput.value = this.extractNamesOnly(
+          saved.participants || "",
+        );
         this.playerCountSelect.value = saved.playerCount || "6";
         this.courtCountSelect.value = saved.courtCount || "1";
         this.roundCountSelect.value = saved.roundCount || "10";
 
         // matchFormatを復元
+        this._isRestoring = true;
         const savedFormat = saved.matchFormat || "doubles";
         const formatRadio = Array.from(this.matchFormatRadios).find(
           (radio) => radio.value === savedFormat,
         );
         if (formatRadio) {
           formatRadio.checked = true;
+          // changeイベントを発火させてupdateGenderFields()を呼ぶ
+          formatRadio.dispatchEvent(new Event("change", { bubbles: true }));
         }
 
         this.matchSubTypeSelect.value = saved.matchSubType || "balanced";
@@ -215,6 +248,7 @@ class UIController {
         this.updateParticipantCount();
         this.toggleGenderInput();
         this.updateMatchSubTypeOptions();
+        this._isRestoring = false;
         setTimeout(() => this.updateExcludeCheckboxes(), 0);
         setTimeout(() => this.updateAddPlayerCheckboxes(), 0);
         setTimeout(() => {
@@ -235,6 +269,13 @@ class UIController {
         if (saved.excludeSettings) {
           setTimeout(() => this.setExcludeSettings(saved.excludeSettings), 0);
         }
+        // プレイヤー追加設定を復元
+        if (saved.addPlayerSettings) {
+          setTimeout(
+            () => this.setAddPlayerSettings(saved.addPlayerSettings),
+            0,
+          );
+        }
       } catch (e) {
         console.error("Failed to load from localStorage:", e);
         localStorage.removeItem("tennisRotationData"); // エラー時は削除
@@ -249,10 +290,22 @@ class UIController {
    * 自動保存の設定
    */
   setupAutoSave() {
+    // デバウンス用のタイマー
+    let saveTimer = null;
+    const debouncedSave = () => {
+      if (saveTimer) clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => this.saveToLocalStorage(), 1000); // 1秒後に保存
+    };
+
+    // タイトルと参加者テキストは入力時にもデバウンス付きで自動保存
+    this.titleInput.addEventListener("input", debouncedSave);
     this.titleInput.addEventListener("change", () => this.saveToLocalStorage());
+
+    this.participantsInput.addEventListener("input", debouncedSave);
     this.participantsInput.addEventListener("change", () =>
       this.saveToLocalStorage(),
     );
+
     this.playerCountSelect.addEventListener("change", () =>
       this.saveToLocalStorage(),
     );
@@ -322,8 +375,10 @@ class UIController {
       // ダブルス(ミックス優先)が選択されている場合：男女混合重視型を表示して性別入力を表示
       if (mixedOption) {
         mixedOption.style.display = "";
-        // バランス型をデフォルト選択
-        this.matchSubTypeSelect.value = "balanced";
+        // 復元中でない場合のみバランス型をデフォルト選択
+        if (!this._isRestoring) {
+          this.matchSubTypeSelect.value = "balanced";
+        }
       }
       if (mixedExplanation) {
         mixedExplanation.style.display = "";
@@ -487,6 +542,7 @@ class UIController {
     rows.forEach((row) => {
       const playerSelect = row.querySelector(".excludePlayer");
       const roundSelect = row.querySelector(".excludeRound");
+      const genderSelect = row.querySelector(".excludePlayerGender");
 
       if (playerSelect && roundSelect) {
         const playerIndex = parseInt(playerSelect.value);
@@ -498,7 +554,10 @@ class UIController {
               `警告: プレイヤー ${playerIndex + 1} が複数回除外設定されています。最初の設定のみ有効です。`,
             );
           } else {
-            settings[playerIndex] = startRound;
+            settings[playerIndex] = {
+              startRound: startRound,
+              gender: genderSelect ? genderSelect.value : null,
+            };
             duplicateCheck.add(playerIndex);
           }
         }
@@ -522,20 +581,34 @@ class UIController {
 
     // 除外設定ごとに行を作成
     Object.keys(excludeSettings).forEach((playerIndex) => {
-      const startRound = excludeSettings[playerIndex];
+      const setting = excludeSettings[playerIndex];
+      // 旧い形式（数値型盤）と新しい形式（オブジェクト）に対応
+      const startRound =
+        typeof setting === "number" ? setting : setting.startRound;
+      const gender = typeof setting === "object" ? setting.gender : null;
       if (typeof startRound === "number" && startRound > 0) {
-        // 行を追加
+        // 行を追加（自動保存の前に値設定するため、一時的に保存を無効にする）
+        this._isRestoring = true;
         this.addExcludeRow();
+        this._isRestoring = false;
 
-        // 追加した行の値を設定
-        const rows = excludeCheckboxes.querySelectorAll("[id^='excludeRow_']");
+        // 追加した行の値を設定（最新の行を取得）
+        const rows = Array.from(
+          excludeCheckboxes.querySelectorAll("[id^='excludeRow_']"),
+        );
         const lastRow = rows[rows.length - 1];
         if (lastRow) {
           const playerSelect = lastRow.querySelector(".excludePlayer");
           const roundSelect = lastRow.querySelector(".excludeRound");
+          const genderSelect = lastRow.querySelector(".excludePlayerGender");
           if (playerSelect && roundSelect) {
+            // プレイヤーインデックスと開始ラウンドを設定
             playerSelect.value = playerIndex;
             roundSelect.value = startRound;
+            // 性別を設定
+            if (genderSelect && gender) {
+              genderSelect.value = gender;
+            }
           }
         }
       }
@@ -543,6 +616,73 @@ class UIController {
 
     // すべての設定完了後に選択肢を更新
     this.updateExcludePlayerOptions();
+
+    // すべての復元完了後に一度だけ保存
+    this.saveToLocalStorage();
+
+    // 除外設定がある場合は展開状態にする
+    const excludeContent = document.getElementById("excludeSettingsContent");
+    const excludeIcon = document.getElementById("excludeToggleIcon");
+    if (excludeContent && excludeIcon) {
+      excludeContent.style.display = "block";
+      excludeIcon.textContent = "▼";
+    }
+  }
+
+  /**
+   * プレイヤー追加設定を復元
+   */
+  setAddPlayerSettings(addPlayerSettings) {
+    if (!addPlayerSettings || addPlayerSettings.length === 0) return;
+
+    const addPlayerCheckboxes = document.getElementById("addPlayerCheckboxes");
+    if (!addPlayerCheckboxes) return;
+
+    // 既存の行をクリア
+    addPlayerCheckboxes.innerHTML = "";
+
+    // プレイヤー追加設定ごとに行を作成
+    addPlayerSettings.forEach((setting) => {
+      // 行を追加（自動保存の前に値設定するため、一時的に保存を無効にする）
+      this._isRestoring = true;
+      this.addPlayerRow();
+      this._isRestoring = false;
+
+      // 追加した行の値を設定（最新の行を取得）
+      const rows = Array.from(
+        addPlayerCheckboxes.querySelectorAll("[id^='addPlayerRow_']"),
+      );
+      const lastRow = rows[rows.length - 1];
+      if (lastRow) {
+        const nameInput = lastRow.querySelector(".addPlayerName");
+        const roundSelect = lastRow.querySelector(".addPlayerRound");
+        const genderSelect = lastRow.querySelector(".addPlayerGender");
+
+        // 値を設定
+        if (nameInput) {
+          nameInput.value = setting.name || "";
+        }
+        if (roundSelect && setting.startRound) {
+          roundSelect.value = setting.startRound;
+        }
+        if (genderSelect && setting.gender) {
+          genderSelect.value = setting.gender;
+        }
+      }
+    });
+
+    // すべての復元完了後に一度だけ保存
+    this.saveToLocalStorage();
+
+    // プレイヤー追加設定がある場合は展開状態にする
+    const addPlayerContent = document.getElementById(
+      "addPlayerSettingsContent",
+    );
+    const addPlayerIcon = document.getElementById("addPlayerToggleIcon");
+    if (addPlayerContent && addPlayerIcon) {
+      addPlayerContent.style.display = "block";
+      addPlayerIcon.textContent = "▼";
+    }
   }
 
   /**
@@ -831,11 +971,11 @@ class UIController {
             <label style="display: flex; align-items: center; cursor: pointer;">
               <input type="radio" name="gender_${i}" id="gender_${i}_M" value="M" ${
                 checkedM || defaultChecked
-              } style="margin-right: 5px;" onchange="document.getElementById('card_${i}').style.background='#E3F2FD'; document.getElementById('card_${i}').style.borderColor='#90CAF9'; uiController.syncGenderToInput(${i}, 'M');">
+              } style="margin-right: 5px;" onchange="document.getElementById('card_${i}').style.background='#E3F2FD'; document.getElementById('card_${i}').style.borderColor='#90CAF9'; uiController.syncGenderToInput(${i}, 'M'); uiController.saveToLocalStorage();">
               <span style="font-weight: 500;">👨 男性</span>
             </label>
             <label style="display: flex; align-items: center; cursor: pointer;">
-              <input type="radio" name="gender_${i}" id="gender_${i}_F" value="F" ${checkedF} style="margin-right: 5px;" onchange="document.getElementById('card_${i}').style.background='#FFEEF5'; document.getElementById('card_${i}').style.borderColor='#FFB6D9'; uiController.syncGenderToInput(${i}, 'F');">
+              <input type="radio" name="gender_${i}" id="gender_${i}_F" value="F" ${checkedF} style="margin-right: 5px;" onchange="document.getElementById('card_${i}').style.background='#FFEEF5'; document.getElementById('card_${i}').style.borderColor='#FFB6D9'; uiController.syncGenderToInput(${i}, 'F'); uiController.saveToLocalStorage();">
               <span style="font-weight: 500;">👩 女性</span>
             </label>
           </div>
@@ -1118,6 +1258,31 @@ class UIController {
     `;
 
     addPlayerCheckboxes.insertAdjacentHTML("beforeend", html);
+
+    // 追加した行の入力要素にchangeイベントリスナーを追加
+    const addedRow = document.getElementById(rowId);
+    if (addedRow) {
+      const nameInput = addedRow.querySelector(".addPlayerName");
+      const roundSelect = addedRow.querySelector(".addPlayerRound");
+      const genderSelect = addedRow.querySelector(".addPlayerGender");
+
+      if (nameInput) {
+        nameInput.addEventListener("change", () => this.saveToLocalStorage());
+      }
+      if (roundSelect) {
+        roundSelect.addEventListener("change", () => this.saveToLocalStorage());
+      }
+      if (genderSelect) {
+        genderSelect.addEventListener("change", () =>
+          this.saveToLocalStorage(),
+        );
+      }
+    }
+
+    // 復元中でない場合のみ自動保存
+    if (!this._isRestoring) {
+      this.saveToLocalStorage();
+    }
   }
 
   /**
@@ -1202,6 +1367,33 @@ class UIController {
     `;
 
     excludeCheckboxes.insertAdjacentHTML("beforeend", html);
+
+    // 追加した行の入力要素にchangeイベントリスナーを追加
+    const addedRow = document.getElementById(rowId);
+    if (addedRow) {
+      const playerSelect = addedRow.querySelector(".excludePlayer");
+      const roundSelect = addedRow.querySelector(".excludeRound");
+      const genderSelect = addedRow.querySelector(".excludePlayerGender");
+
+      if (playerSelect) {
+        playerSelect.addEventListener("change", () =>
+          this.saveToLocalStorage(),
+        );
+      }
+      if (roundSelect) {
+        roundSelect.addEventListener("change", () => this.saveToLocalStorage());
+      }
+      if (genderSelect) {
+        genderSelect.addEventListener("change", () =>
+          this.saveToLocalStorage(),
+        );
+      }
+    }
+
+    // 復元中でない場合のみ自動保存
+    if (!this._isRestoring) {
+      this.saveToLocalStorage();
+    }
   }
 
   /**
@@ -1270,6 +1462,8 @@ class UIController {
     const row = document.getElementById(rowId);
     if (row) {
       row.remove();
+      // 自動保存
+      this.saveToLocalStorage();
     }
   }
 
@@ -1282,6 +1476,8 @@ class UIController {
       row.remove();
       // 削除後、他の行の選択肢を更新
       this.updateExcludePlayerOptions();
+      // 自動保存
+      this.saveToLocalStorage();
     }
   }
 
@@ -1432,9 +1628,6 @@ class UIController {
       return;
     }
 
-    // 整形前に選択済みの性別情報をテキストに反映
-    this.applySavedGendersToInput();
-
     // 1. 改行、タブ、カンマ、スペース（全角・半角）で分割
     const separators = /[\n\r\t,、\s　]+/;
     let entries = this.participantsInput.value
@@ -1442,17 +1635,11 @@ class UIController {
       .map((entry) => entry.trim())
       .filter((entry) => entry.length > 0);
 
-    // 2. 各エントリーから先頭の番号を削除し、性別情報は保持
+    // 2. 各エントリーから先頭の番号を削除（性別情報は削除）
     entries = entries
       .map((entry) => {
-        // 性別情報を分離（|M または |F）
-        let name = entry;
-        let gender = null;
-        const genderMatch = entry.match(/^(.+?)\|([MF])$/);
-        if (genderMatch) {
-          name = genderMatch[1].trim();
-          gender = genderMatch[2];
-        }
+        // 性別情報を削除（|M または |F）
+        let name = entry.replace(/\|[MF]$/, "");
 
         // 半角数字 + 区切り文字（. ) : など）を削除
         let formatted = name.replace(/^\d+[.):：)）]\s*/, "");
@@ -1465,22 +1652,17 @@ class UIController {
         formatted = formatted.replace(/^（\d+）\s*/, "");
         formatted = formatted.trim();
 
-        // 性別情報を再付加
-        if (gender) {
-          formatted = `${formatted}|${gender}`;
-        }
-
         return formatted;
       })
       .filter((entry) => {
-        // |M または |F のみのエントリーを除外
-        return entry.length > 0 && entry !== "|M" && entry !== "|F";
+        // 空白文字列を除外
+        return entry.length > 0;
       });
 
     // 3. 重複を削除
     entries = [...new Set(entries)];
 
-    // 4. 整形結果をテキストエリアに反映
+    // 4. 整形結果をテキストエリアに反映（性別情報なし）
     this.participantsInput.value = entries.join("\n");
 
     // 参加者数を更新
@@ -1502,6 +1684,9 @@ class UIController {
         this.errorMessage.style.color = "#c33";
       }, 300);
     }, 2000);
+
+    // 整形後の内容を保存
+    this.saveToLocalStorage();
   }
 
   randomizeParticipants() {
@@ -1511,14 +1696,12 @@ class UIController {
       return;
     }
 
-    // シャッフル前に選択済みの性別情報をテキストに反映
-    this.applySavedGendersToInput();
-
-    // 名前を取得（性別情報も保持）
+    // 名前のみを取得（性別情報は削除）
     let names = this.participantsInput.value
       .split("\n")
       .map((line) => line.trim())
-      .filter((line) => line.length > 0);
+      .filter((line) => line.length > 0)
+      .map((line) => line.replace(/\|[MF]$/, "")); // 性別情報を削除
 
     if (names.length < 2) {
       this.showError("ランダムにするには2名以上必要です");
@@ -1531,13 +1714,13 @@ class UIController {
       [names[i], names[j]] = [names[j], names[i]];
     }
 
-    // ランダム順をテキストエリアに反映
+    // ランダム順をテキストエリアに反映（性別情報なし）
     this.participantsInput.value = names.join("\n");
 
     // 参加者数を更新
     this.updateParticipantCount();
 
-    // 性別チェックボックスを更新（性別情報がある場合に反映）
+    // 性別チェックボックスを更新
     this.updateGenderCheckboxes();
 
     // 成功メッセージ
@@ -1553,6 +1736,9 @@ class UIController {
         this.errorMessage.style.color = "#c33";
       }, 300);
     }, 2000);
+
+    // ランダム後の内容を保存
+    this.saveToLocalStorage();
   }
 
   /**
@@ -1705,11 +1891,6 @@ class UIController {
       (radio) => radio.checked,
     )?.value;
 
-    // ミックス優先または試合形式がダブルス(ミックス優先)の場合は性別情報をテキストに反映
-    if (matchSubType === "mixed" || selectedFormat === "doubles-mixed") {
-      this.applySavedGendersToInput();
-    }
-
     const participantsText = this.participantsInput.value;
 
     // 参加者名を取得（未入力の場合は番号で自動生成）
@@ -1861,6 +2042,9 @@ class UIController {
           block: "nearest",
         });
       }, 100);
+
+      // 生成成功後に設定を保存
+      this.saveToLocalStorage();
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -2098,6 +2282,13 @@ class UIController {
         `✅ ${newPlayerName}を第${addPlayerRound}ラウンドから追加しました`,
         "success",
       );
+
+      // ダイアログを閉じる
+      const dialog = document.getElementById("addPlayerDialog");
+      if (dialog) dialog.remove();
+
+      // プレイヤー追加後の状態を保存
+      this.saveToLocalStorage();
     } catch (error) {
       this.showLoading(false);
       this.showError(error.message);
