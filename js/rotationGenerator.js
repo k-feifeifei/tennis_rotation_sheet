@@ -36,7 +36,7 @@ class RotationGenerator {
     this.rounds = [];
     this.debugLogs = [];
     this.excludedPlayers = new Set(); // 除外プレイヤーのインデックスを管理
-    this.excludeSettingsMap = excludeSettingsMap; // グランド別の除外設定: {playerIndex: [courts]}
+    this.excludeSettingsMap = excludeSettingsMap; // 除外設定: {playerIndex: startRound}
 
     // 対戦方式に応じた重み設定を適用
     this.applyWeightsPreset(matchSubType);

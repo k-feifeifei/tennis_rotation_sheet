@@ -39,9 +39,6 @@ class UIController {
     this.updatePlayerCountOptions(); // 初期化時に参加人数オプションを設定
     this.updateDisplayRoundOptions(); // 初期化時にラウンド表示オプションを設定
 
-    // デフォルトタイトルを設定（年始からの日数を計算）
-    this.setDefaultTitle();
-
     // デフォルト値を設定（ダブルス、6人、1コート）
     setTimeout(() => {
       if (this.playerCountSelect.querySelector('option[value="6"]')) {
@@ -53,7 +50,12 @@ class UIController {
     }, 0);
 
     // ローカルストレージから前回の入力内容を復元
-    this.loadFromLocalStorage();
+    const restored = this.loadFromLocalStorage();
+
+    // 保存データがなかった場合のみデフォルトタイトルを設定
+    if (!restored) {
+      this.setDefaultTitle();
+    }
 
     // 入力内容の変更時に自動保存
     this.setupAutoSave();
@@ -203,7 +205,7 @@ class UIController {
       this._isRestoring = false;
       setTimeout(() => this.updateExcludeCheckboxes(), 0);
       setTimeout(() => this.updateAddPlayerCheckboxes(), 0);
-      return;
+      return true;
     }
 
     const data = localStorage.getItem("tennisRotationData");
@@ -220,10 +222,13 @@ class UIController {
           // 有効期限切れ → ストレージを削除して初期状態に戻す
           localStorage.removeItem("tennisRotationData");
           this.updateMatchSubTypeOptions();
-          return;
+          return false;
         }
 
-        this.titleInput.value = saved.title || this.titleInput.value;
+        // titleが保存されている場合は復元（空文字列も含む）
+        if (saved.hasOwnProperty("title")) {
+          this.titleInput.value = saved.title;
+        }
         this.participantsInput.value = this.extractNamesOnly(
           saved.participants || "",
         );
@@ -276,13 +281,16 @@ class UIController {
             0,
           );
         }
+        return true;
       } catch (e) {
         console.error("Failed to load from localStorage:", e);
         localStorage.removeItem("tennisRotationData"); // エラー時は削除
+        return false;
       }
     } else {
       // 初回起動時はupdateMatchSubTypeOptionsを実行
       this.updateMatchSubTypeOptions();
+      return false;
     }
   }
 
@@ -542,7 +550,6 @@ class UIController {
     rows.forEach((row) => {
       const playerSelect = row.querySelector(".excludePlayer");
       const roundSelect = row.querySelector(".excludeRound");
-      const genderSelect = row.querySelector(".excludePlayerGender");
 
       if (playerSelect && roundSelect) {
         const playerIndex = parseInt(playerSelect.value);
@@ -556,7 +563,6 @@ class UIController {
           } else {
             settings[playerIndex] = {
               startRound: startRound,
-              gender: genderSelect ? genderSelect.value : null,
             };
             duplicateCheck.add(playerIndex);
           }
@@ -585,7 +591,6 @@ class UIController {
       // 旧い形式（数値型盤）と新しい形式（オブジェクト）に対応
       const startRound =
         typeof setting === "number" ? setting : setting.startRound;
-      const gender = typeof setting === "object" ? setting.gender : null;
       if (typeof startRound === "number" && startRound > 0) {
         // 行を追加（自動保存の前に値設定するため、一時的に保存を無効にする）
         this._isRestoring = true;
@@ -600,15 +605,10 @@ class UIController {
         if (lastRow) {
           const playerSelect = lastRow.querySelector(".excludePlayer");
           const roundSelect = lastRow.querySelector(".excludeRound");
-          const genderSelect = lastRow.querySelector(".excludePlayerGender");
           if (playerSelect && roundSelect) {
             // プレイヤーインデックスと開始ラウンドを設定
             playerSelect.value = playerIndex;
             roundSelect.value = startRound;
-            // 性別を設定
-            if (genderSelect && gender) {
-              genderSelect.value = gender;
-            }
           }
         }
       }
@@ -1175,35 +1175,6 @@ class UIController {
         }
       }
     });
-
-    // プレイヤー除外行の性別フィールドを更新
-    const excludeRows = document.querySelectorAll("[id^='excludeRow_']");
-    excludeRows.forEach((row) => {
-      const existingGender = row.querySelector(".excludePlayerGender");
-      const deleteButton = row.querySelector(
-        "button[onclick*='removeExcludeRow']",
-      );
-
-      if (needsGender && !existingGender && deleteButton) {
-        // 性別フィールドを追加
-        const genderHtml = `
-          <div class="gender-field" style="flex: 0 0 120px;">
-            <label style="display: block; margin-bottom: 5px; font-weight: 500; color: #666; font-size: 12px;">性別</label>
-            <select class="excludePlayerGender" style="width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 12px;">
-              <option value="M">👨 男性</option>
-              <option value="F">👩 女性</option>
-            </select>
-          </div>
-        `;
-        deleteButton.insertAdjacentHTML("beforebegin", genderHtml);
-      } else if (!needsGender && existingGender) {
-        // 性別フィールドを削除
-        const genderField = existingGender.closest(".gender-field");
-        if (genderField) {
-          genderField.remove();
-        }
-      }
-    });
   }
 
   /**
@@ -1327,26 +1298,6 @@ class UIController {
       roundOptions += `<option value="${i}">第${i}ラウンド</option>`;
     }
 
-    // ミックス対応時の性別選択
-    const selectedFormat = Array.from(this.matchFormatRadios).find(
-      (radio) => radio.checked,
-    )?.value;
-    const matchSubType = this.matchSubTypeSelect.value;
-    const needsGender =
-      selectedFormat === "doubles-mixed" || matchSubType === "mixed";
-
-    const genderHtml = needsGender
-      ? `
-      <div class="gender-field" style="flex: 0 0 120px;">
-        <label style="display: block; margin-bottom: 5px; font-weight: 500; color: #666; font-size: 12px;">性別</label>
-        <select class="excludePlayerGender" style="width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 12px;">
-          <option value="M">👨 男性</option>
-          <option value="F">👩 女性</option>
-        </select>
-      </div>
-    `
-      : "";
-
     const html = `
       <div id="${rowId}" style="border: 1px solid #ddd; border-radius: 6px; padding: 12px; background: #f9f9f9; display: flex; gap: 10px; align-items: end;">
         <div style="flex: 1;">
@@ -1361,7 +1312,6 @@ class UIController {
             ${roundOptions}
           </select>
         </div>
-        ${genderHtml}
         <button type="button" onclick="uiController.removeExcludeRow('${rowId}')" style="padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; height: 32px;">削除</button>
       </div>
     `;
@@ -1373,7 +1323,6 @@ class UIController {
     if (addedRow) {
       const playerSelect = addedRow.querySelector(".excludePlayer");
       const roundSelect = addedRow.querySelector(".excludeRound");
-      const genderSelect = addedRow.querySelector(".excludePlayerGender");
 
       if (playerSelect) {
         playerSelect.addEventListener("change", () =>
@@ -1382,11 +1331,6 @@ class UIController {
       }
       if (roundSelect) {
         roundSelect.addEventListener("change", () => this.saveToLocalStorage());
-      }
-      if (genderSelect) {
-        genderSelect.addEventListener("change", () =>
-          this.saveToLocalStorage(),
-        );
       }
     }
 
@@ -1983,6 +1927,14 @@ class UIController {
     // 除外設定を取得
     const excludeSettings = this.getExcludeSettings();
 
+    // 除外設定をRotationGenerator用の形式に変換（{ playerIndex: startRound } の数値形式）
+    const excludeSettingsMap = {};
+    Object.keys(excludeSettings).forEach((playerIndex) => {
+      const setting = excludeSettings[playerIndex];
+      // オブジェクト形式 { startRound } から数値を取り出す
+      excludeSettingsMap[playerIndex] = setting.startRound;
+    });
+
     this.showLoading(true);
 
     await new Promise((resolve) => setTimeout(resolve, 500));
@@ -1996,7 +1948,7 @@ class UIController {
         matchSubType,
         genders,
         selectedFormat,
-        excludeSettings,
+        excludeSettingsMap,
       );
       this.currentRotation = rotation; // 継続ローテーション用に保存
       this.currentTitle = title;
@@ -2084,6 +2036,26 @@ class UIController {
       this.generateDebugTable(rotation, title);
 
       this.resultSection.classList.add("show");
+
+      // ローテーション表のスクロール位置を初期化
+      this.resultSection.scrollTop = 0;
+      const canvasContainer = document.querySelector(".canvas-container");
+      if (canvasContainer) {
+        canvasContainer.scrollLeft = 0;
+        canvasContainer.scrollTop = 0;
+      }
+      // デバッグログコンテナのスクロール位置も初期化
+      const debugTableContainer = document.getElementById(
+        "debugTableContainer",
+      );
+      if (debugTableContainer) {
+        const debugLogDiv = debugTableContainer.querySelector(
+          "div[style*='overflow-y']",
+        );
+        if (debugLogDiv) {
+          debugLogDiv.scrollTop = 0;
+        }
+      }
 
       setTimeout(() => {
         this.resultSection.scrollIntoView({
