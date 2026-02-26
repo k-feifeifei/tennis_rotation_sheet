@@ -786,13 +786,16 @@ class RotationGenerator {
     if (!newPlayerName || typeof newPlayerName !== "string") {
       throw new Error("プレイヤー名が無効です");
     }
+    // startRoundはroundCount（予定ラウンド数）まで許可
+    // rounds.lengthは現在生成済みのラウンド数なので、初期追加時は0の可能性がある
+    const maxRound = Math.max(this.rounds.length, this.roundCount);
     if (
       !Number.isInteger(startRound) ||
       startRound < 1 ||
-      startRound > this.rounds.length
+      startRound > maxRound
     ) {
       throw new Error(
-        `開始ラウンドが無効です: ${startRound}（有効範囲: 1-${this.rounds.length}）`,
+        `開始ラウンドが無効です: ${startRound}（有効範囲: 1-${maxRound}）`,
       );
     }
     if (!Number.isInteger(initialPlayCount) || initialPlayCount < 0) {
@@ -817,10 +820,20 @@ class RotationGenerator {
 
     // 4. ペア・対戦履歴を拡張
     const playerCount = this.players.length;
+
+    // 既存プレイヤーの履歴配列に新プレイヤー分の列を追加
     for (let i = 0; i < playerCount - 1; i++) {
+      // 配列が存在しない場合は初期化
+      if (!this.partnerHistory[i]) {
+        this.partnerHistory[i] = Array(playerCount - 1).fill(0);
+      }
+      if (!this.matchHistory[i]) {
+        this.matchHistory[i] = Array(playerCount - 1).fill(0);
+      }
       this.partnerHistory[i].push(0);
       this.matchHistory[i].push(0);
     }
+    // 新プレイヤーの履歴配列を追加
     this.partnerHistory.push(Array(playerCount).fill(0));
     this.matchHistory.push(Array(playerCount).fill(0));
 
@@ -837,6 +850,20 @@ class RotationGenerator {
 
     // ペア・対戦履歴をリセット
     for (let i = 0; i < playerCount; i++) {
+      // 配列の整合性を確認して必要なら初期化
+      if (
+        !this.partnerHistory[i] ||
+        this.partnerHistory[i].length !== playerCount
+      ) {
+        this.partnerHistory[i] = Array(playerCount).fill(0);
+      }
+      if (
+        !this.matchHistory[i] ||
+        this.matchHistory[i].length !== playerCount
+      ) {
+        this.matchHistory[i] = Array(playerCount).fill(0);
+      }
+      // リセット
       for (let j = 0; j < playerCount; j++) {
         this.partnerHistory[i][j] = 0;
         this.matchHistory[i][j] = 0;

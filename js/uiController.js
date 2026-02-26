@@ -1917,6 +1917,12 @@ class UIController {
     this.form.reset();
     this.resultSection.classList.remove("show");
     this.currentCanvas = null;
+
+    // 内部状態をリセット
+    this.currentRotation = null;
+    this.currentTitle = null;
+    this.currentParticipants = null;
+
     this.updatePlayerCountOptions(); // フォームリセット時に参加人数オプションを再設定
 
     // デフォルト値に合わせてリセット
@@ -1950,6 +1956,39 @@ class UIController {
     checkboxes.forEach((checkbox) => {
       checkbox.checked = false;
     });
+
+    // 除外設定の動的行をクリア
+    const excludeCheckboxes = document.getElementById("excludeCheckboxes");
+    if (excludeCheckboxes) {
+      excludeCheckboxes.innerHTML = "";
+    }
+
+    // プレイヤー追加設定の動的行をクリア
+    const addPlayerCheckboxes = document.getElementById("addPlayerCheckboxes");
+    if (addPlayerCheckboxes) {
+      addPlayerCheckboxes.innerHTML = "";
+    }
+
+    // 除外設定とプレイヤー追加設定のUIを更新
+    this.updateExcludeCheckboxes();
+    this.updateAddPlayerCheckboxes();
+
+    // 折りたたみ状態をリセット（閉じた状態にする）
+    const excludeContent = document.getElementById("excludeSettingsContent");
+    const excludeIcon = document.getElementById("excludeToggleIcon");
+    if (excludeContent && excludeIcon) {
+      excludeContent.style.display = "none";
+      excludeIcon.textContent = "▶";
+    }
+
+    const addPlayerContent = document.getElementById(
+      "addPlayerSettingsContent",
+    );
+    const addPlayerIcon = document.getElementById("addPlayerToggleIcon");
+    if (addPlayerContent && addPlayerIcon) {
+      addPlayerContent.style.display = "none";
+      addPlayerIcon.textContent = "▶";
+    }
 
     // カスタム重みをリセット
     const defaultCustomWeights = SCORING_WEIGHTS_PRESETS.balanced;
