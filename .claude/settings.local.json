@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(Get-Item *)"
+      "PowerShell(Get-Item *)",
+      "Bash(npm -v)",
+      "Bash(npm create *)",
+      "PowerShell(cd \"C:\\\\Users\\\\kakus\\\\GoogleDrive\\\\02_dev\\\\04_lifestyle_hobby\\\\tennis_rotation_sheet2\"; $input = \"y`n\" | npm create vite@latest . -- --template vue 2>&1; $input)",
+      "Bash(npx create-vite@latest --template vue _tmp_scaffold)",
+      "Bash(npm install *)"
     ]
   }
 }
