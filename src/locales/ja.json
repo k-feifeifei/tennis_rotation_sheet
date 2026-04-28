@@ -1,10 +1,23 @@
 {
   "appTitle": "テニスローテーション",
   "nav": {
-    "players": "プレイヤー設定",
-    "params": "基本パラメータ",
+    "players": "プレイヤー・設定",
     "schedule": "スケジュール",
-    "stats": "統計"
+    "stats": "統計",
+    "setup": "初期設定"
+  },
+  "home": {
+    "subtitle": "テニスダブルスローテーション管理",
+    "newSession": "新しい対戦を開始",
+    "history": "過去の対戦",
+    "backToHome": "ホームに戻る",
+    "playerCount": "{n}名",
+    "roundCount": "{n}試合"
+  },
+  "roundOptions": {
+    "title": "試合オプション",
+    "regenHint": "以下の変更は第{n}試合以降のスケジュールを再生成します（それ以前は変更なし）",
+    "regenerateFrom": "ここから再生成"
   },
   "player": {
     "count": "プレイヤー数",
@@ -29,17 +42,33 @@
     "statusAbsent": "一時欠席",
     "statusInactive": "永久脱退",
     "absenceRounds": "スキップ試合数",
-    "statusHint": "クリックしてステータス変更"
+    "statusHint": "クリックしてステータス変更",
+    "attendanceTitle": "出欠管理",
+    "attendanceHint": "途中退場・脱退のプレイヤーを設定"
   },
   "params": {
     "courts": "コート数",
     "rounds": "総試合数",
     "autoRounds": "自動計算",
     "mode": "モード",
+    "modeGroupBase": "基本",
+    "modeGroupGender": "性別",
+    "modeGroupTeam": "チーム",
     "modeNormal": "通常",
+    "modeNormalDesc": "均等出場、多様なパートナー",
+    "modeCoverage": "全カバー",
+    "modeCoverageDesc": "全員が一度ずつ組み対戦することを優先（任意のモードと組み合わせ可能）",
     "modeMixed": "ミックスダブルス",
+    "modeMixedDesc": "各チーム男女1名ずつ、不足時は自動降格",
     "modeRivals": "赤青対抗",
-    "modeMixedRivals": "ミックス+対抗"
+    "modeRivalsDesc": "赤チーム全員 vs 青チーム全員（チーム割当が必要）",
+    "modeMixedRivals": "ミックス+対抗",
+    "modeMixedRivalsDesc": "各チームが男女1名かつ赤青1名ずつを同時に満たす",
+    "coverageOption": "全カバー優先",
+    "seed": "ランダムシード",
+    "seedHint": "同じシードなら毎回同じスケジュールが生成されます",
+    "advanced": "高度な設定",
+    "teamRequired": "先にプレイヤーに赤/青チームを割り当ててください"
   },
   "schedule": {
     "generate": "生成",
@@ -52,7 +81,10 @@
     "scoreB": "Bチーム得点",
     "enterScore": "得点入力",
     "save": "保存",
-    "exportPdf": "PDF出力"
+    "exportPdf": "PDF出力",
+    "viewStats": "統計を見る",
+    "appendLabel": "試合を追加",
+    "appendRounds": "追加生成"
   },
   "stats": {
     "player": "プレイヤー",
@@ -65,7 +97,9 @@
     "pointsAgainst": "失点",
     "matrixTitle": "ペア関係マトリクス",
     "together": "同組",
-    "versus": "対戦"
+    "versus": "対戦",
+    "upToRound": "第{n}試合までの統計",
+    "allRounds": "全試合"
   },
   "actions": {
     "confirm": "確認",

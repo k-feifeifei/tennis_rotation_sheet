@@ -14,6 +14,11 @@ export const useScheduleStore = defineStore('schedule', () => {
     scores.value = newRounds.map(r => r.courts.map(() => ({ a: null, b: null })))
   }
 
+  function appendRounds(newRounds) {
+    rounds.value = [...rounds.value, ...newRounds]
+    scores.value = [...scores.value, ...newRounds.map(r => r.courts.map(() => ({ a: null, b: null })))]
+  }
+
   function setScore(roundIdx, courtIdx, a, b) {
     scores.value[roundIdx][courtIdx] = { a, b }
   }
@@ -106,7 +111,7 @@ export const useScheduleStore = defineStore('schedule', () => {
 
   return {
     rounds, scores, generated,
-    setRounds, setScore,
+    setRounds, appendRounds, setScore,
     $reset, hydrate, serialize,
     playerStats, pairMatrix,
   }

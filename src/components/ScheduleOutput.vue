@@ -1,45 +1,94 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import RoundOptions from './RoundOptions.vue'
 import { usePlayersStore } from '../stores/players'
 import { useSettingsStore } from '../stores/settings'
 import { useScheduleStore } from '../stores/schedule'
-import { generateSchedule } from '../utils/algorithm'
+import { generateSchedule, extractPriorState } from '../utils/algorithm'
+
+const emit = defineEmits(['view-stats'])
 
 const { t } = useI18n()
 const playersStore = usePlayersStore()
 const settings = useSettingsStore()
 const scheduleStore = useScheduleStore()
 
-const error = ref('')
 const scoreInputs = ref({})
+
+// Round options modal state
+const roundOptionsOpen = ref(false)
+const roundOptionsIndex = ref(0)
+
+// Append rounds
+const appendCount = ref(5)
+const appendError = ref('')
 
 function playerName(id) {
   const p = playersStore.players.find(x => x.id === id)
   if (!p) return `#${id}`
   const idx = playersStore.players.indexOf(p) + 1
-  return p.name || `${t('player.player')} ${idx}`
+  return p.name ? `#${idx} ${p.name}` : `#${idx}`
 }
 
-function generate() {
-  error.value = ''
-  const n = playersStore.players.length
-  if (n < 4) { error.value = t('errors.minPlayers'); return }
-  if (n > 50) { error.value = t('errors.maxPlayers'); return }
-  if (settings.mode === 'mixed' || settings.mode === 'mixedRivals') {
-    const males = playersStore.players.filter(p => p.gender === 'M').length
-    const females = playersStore.players.filter(p => p.gender === 'F').length
-    if (males < 2 || females < 2) { error.value = t('errors.notEnoughForMode'); return }
-  }
-  const rounds = generateSchedule(
+function openRoundOptions(ri) {
+  roundOptionsIndex.value = ri
+  roundOptionsOpen.value = true
+}
+
+function closeRoundOptions() {
+  roundOptionsOpen.value = false
+}
+
+function regenerateFrom(fromRoundIndex) {
+  // Keep rounds 0..fromRoundIndex-1; regenerate the rest
+  const keptRounds = scheduleStore.rounds.slice(0, fromRoundIndex)
+  const keptScores = scheduleStore.scores.slice(0, fromRoundIndex)
+  const remaining = scheduleStore.rounds.length - fromRoundIndex
+
+  const priorState = extractPriorState(keptRounds, playersStore.players)
+  const newRounds = generateSchedule(
     playersStore.players,
     settings.courts,
-    settings.rounds,
+    Math.max(remaining, 1),
     settings.mode,
     playersStore.constraints,
+    settings.seed,
+    settings.coverage,
+    priorState,
   )
-  scheduleStore.setRounds(rounds)
-  scoreInputs.value = {}
+
+  scheduleStore.setRounds([...keptRounds, ...newRounds])
+  // Restore scores for kept rounds
+  keptScores.forEach((roundScores, ri) => {
+    roundScores.forEach((sc, ci) => {
+      if (sc.a !== null) scheduleStore.setScore(ri, ci, sc.a, sc.b)
+    })
+  })
+  // Clear score inputs for regenerated rounds
+  const newInputs = {}
+  Object.keys(scoreInputs.value).forEach(k => {
+    const ri = Number(k.split('-')[0])
+    if (ri < fromRoundIndex) newInputs[k] = scoreInputs.value[k]
+  })
+  scoreInputs.value = newInputs
+}
+
+function appendRounds() {
+  appendError.value = ''
+  const n = Math.max(1, Math.min(100, appendCount.value || 5))
+  const priorState = extractPriorState(scheduleStore.rounds, playersStore.players)
+  const newRounds = generateSchedule(
+    playersStore.players,
+    settings.courts,
+    n,
+    settings.mode,
+    playersStore.constraints,
+    settings.seed,
+    settings.coverage,
+    priorState,
+  )
+  scheduleStore.appendRounds(newRounds)
 }
 
 function saveScore(ri, ci) {
@@ -72,13 +121,6 @@ function exportPdf() {
     <div class="schedule-header">
       <h2>{{ t('nav.schedule') }}</h2>
       <div class="schedule-actions">
-        <button class="btn-primary" @click="generate">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-            <path d="M2 7a5 5 0 0110 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-            <path d="M10.5 5l1.5 2-2 1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          {{ scheduleStore.generated ? t('schedule.regenerate') : t('schedule.generate') }}
-        </button>
         <button v-if="scheduleStore.generated" class="btn-ghost" @click="exportPdf">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
             <rect x="2" y="1" width="10" height="12" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
@@ -89,26 +131,28 @@ function exportPdf() {
       </div>
     </div>
 
-    <div v-if="error" class="error-banner">
-      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-        <circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.4"/>
-        <path d="M7 4v3M7 9.5v.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-      </svg>
-      {{ error }}
-    </div>
-
-    <div v-if="!scheduleStore.generated" class="empty-hint">
-      <svg width="36" height="36" viewBox="0 0 36 36" fill="none" aria-hidden="true" class="empty-icon">
-        <rect x="3" y="3" width="30" height="30" rx="4" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"/>
-        <path d="M12 18h12M18 12v12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-      </svg>
-      <p>{{ t('schedule.generate') }}...</p>
-    </div>
-
     <div v-for="(round, ri) in scheduleStore.rounds" :key="ri" class="round-block">
       <div class="round-header">
         <span class="round-badge">{{ ri + 1 }}</span>
         <h3 class="round-title">{{ t('schedule.round', { n: ri + 1 }) }}</h3>
+        <div class="round-header-actions">
+          <button class="btn-round-opt" @click="openRoundOptions(ri)" :title="t('roundOptions.title')">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
+              <circle cx="6.5" cy="2.5" r="1" fill="currentColor"/>
+              <circle cx="6.5" cy="6.5" r="1" fill="currentColor"/>
+              <circle cx="6.5" cy="10.5" r="1" fill="currentColor"/>
+            </svg>
+            {{ t('roundOptions.title') }}
+          </button>
+          <button class="btn-stats" @click="emit('view-stats', ri)" :title="t('schedule.viewStats')">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
+              <rect x="1" y="7" width="2.5" height="5" rx="0.8" fill="currentColor"/>
+              <rect x="5" y="4" width="2.5" height="8" rx="0.8" fill="currentColor"/>
+              <rect x="9" y="1" width="2.5" height="11" rx="0.8" fill="currentColor"/>
+            </svg>
+            {{ t('schedule.viewStats') }}
+          </button>
+        </div>
       </div>
 
       <div class="courts-grid">
@@ -164,7 +208,59 @@ function exportPdf() {
         <span v-for="id in round.bench" :key="id" class="player-chip bench-chip">{{ playerName(id) }}</span>
       </div>
     </div>
+
+    <!-- Append rounds section -->
+    <div v-if="scheduleStore.generated" class="append-section">
+      <span class="append-label">{{ t('schedule.appendLabel') }}</span>
+      <div class="stepper">
+        <button
+          class="stepper-btn"
+          :disabled="appendCount <= 1"
+          @click="appendCount = Math.max(1, appendCount - 1)"
+        >
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+            <path d="M2 6h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <span class="stepper-val">{{ appendCount }}</span>
+        <button
+          class="stepper-btn"
+          :disabled="appendCount >= 100"
+          @click="appendCount = Math.min(100, appendCount + 1)"
+        >
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+            <path d="M6 2v8M2 6h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+      <button class="btn-secondary" @click="appendRounds">
+        {{ t('schedule.appendRounds') }}
+      </button>
+    </div>
   </div>
+
+  <!-- Round options modal -->
+  <Teleport to="body">
+    <div v-if="roundOptionsOpen" class="modal-backdrop" @click.self="closeRoundOptions">
+      <div class="modal-dialog modal-dialog-sm" role="dialog" aria-modal="true">
+        <div class="modal-header">
+          <span class="modal-title">{{ t('roundOptions.title') }} — {{ t('schedule.round', { n: roundOptionsIndex + 1 }) }}</span>
+          <button class="modal-close btn-ghost-sm" @click="closeRoundOptions">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+              <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <RoundOptions
+            :round-index="roundOptionsIndex"
+            @close="closeRoundOptions"
+            @regenerate-from="regenerateFrom"
+          />
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -179,30 +275,6 @@ function exportPdf() {
 }
 .schedule-actions { display: flex; gap: 0.5rem; }
 
-.error-banner {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.65rem 1rem;
-  background: var(--danger-bg);
-  border: 1px solid var(--danger-border);
-  border-radius: 8px;
-  color: var(--danger);
-  font-size: 0.875rem;
-}
-
-.empty-hint {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 4rem 1rem;
-  color: var(--text-muted);
-  font-size: 0.875rem;
-  text-align: center;
-}
-.empty-icon { color: var(--border); }
-
 .round-block {
   border: 1px solid var(--border-subtle);
   border-radius: 12px;
@@ -216,7 +288,41 @@ function exportPdf() {
   align-items: center;
   gap: 0.6rem;
   margin-bottom: 0.9rem;
+  flex-wrap: wrap;
 }
+
+.round-header-actions {
+  display: flex;
+  gap: 0.35rem;
+  margin-left: auto;
+}
+
+.btn-round-opt, .btn-stats {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-family: var(--sans);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.1s;
+}
+.btn-round-opt:hover {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+}
+.btn-stats:hover {
+  background: var(--accent-bg);
+  color: var(--accent);
+  border-color: var(--accent-border);
+}
+.btn-round-opt:active, .btn-stats:active { transform: scale(0.96); }
 
 .round-badge {
   display: flex;
@@ -294,14 +400,8 @@ function exportPdf() {
   white-space: nowrap;
 }
 
-.chip-a {
-  background: rgba(5, 150, 105, 0.09);
-  color: var(--accent);
-}
-.chip-b {
-  background: rgba(37, 99, 235, 0.08);
-  color: #2563eb;
-}
+.chip-a { background: rgba(5, 150, 105, 0.09); color: var(--accent); }
+.chip-b { background: rgba(37, 99, 235, 0.08); color: #2563eb; }
 
 @media (prefers-color-scheme: dark) {
   .chip-a { background: rgba(16, 185, 129, 0.12); color: #34d399; }
@@ -369,9 +469,113 @@ function exportPdf() {
   font-size: 0.78rem;
 }
 
+/* Append section */
+.append-section {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 1rem 1.25rem;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.append-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.stepper-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--text);
+  transition: background 0.15s;
+}
+.stepper-btn:hover:not(:disabled) { background: var(--border); }
+.stepper-btn:disabled { color: var(--text-muted); cursor: not-allowed; }
+.stepper-val {
+  width: 2.2rem;
+  text-align: center;
+  font-size: 0.875rem;
+  font-weight: 700;
+  font-family: var(--mono);
+  color: var(--text-h);
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  line-height: 2rem;
+}
+
+/* Modal */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 200;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 2rem 1rem;
+  overflow-y: auto;
+}
+
+.modal-dialog {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  width: 100%;
+  max-width: 520px;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.18);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem 0.75rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.modal-title {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--text-h);
+}
+
+.modal-close { padding: 0.3rem 0.4rem; }
+
+.modal-body {
+  padding: 1.25rem;
+  overflow-y: auto;
+  max-height: 75dvh;
+}
+
+@media (max-width: 640px) {
+  .modal-backdrop { padding: 0; align-items: flex-end; }
+  .modal-dialog { border-radius: 14px 14px 0 0; max-height: 92dvh; }
+}
+
 @media print {
   .schedule-actions { display: none; }
+  .round-header-actions { display: none; }
   .score-row .btn-primary-sm { display: none; }
+  .append-section { display: none; }
   .round-block { break-inside: avoid; box-shadow: none; border-color: #e4e4e7; }
 }
 </style>

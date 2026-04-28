@@ -1,10 +1,23 @@
 {
   "appTitle": "网球对战排表",
   "nav": {
-    "players": "球员配置",
-    "params": "基本参数",
+    "players": "球员 & 参数",
     "schedule": "排表结果",
-    "stats": "统计视图"
+    "stats": "统计视图",
+    "setup": "初始设定"
+  },
+  "home": {
+    "subtitle": "网球双打轮换排表工具",
+    "newSession": "开始新对战",
+    "history": "历史对战",
+    "backToHome": "返回首页",
+    "playerCount": "{n} 名球员",
+    "roundCount": "{n} 场"
+  },
+  "roundOptions": {
+    "title": "场次选项",
+    "regenHint": "以下更改将从第 {n} 场起重新生成排表（之前场次保持不变）",
+    "regenerateFrom": "从此场重新生成"
   },
   "player": {
     "count": "球员人数",
@@ -29,17 +42,33 @@
     "statusAbsent": "临时退出",
     "statusInactive": "永久退出",
     "absenceRounds": "跳过场数",
-    "statusHint": "点击切换状态"
+    "statusHint": "点击切换状态",
+    "attendanceTitle": "出勤管理",
+    "attendanceHint": "设置中途退出的球员"
   },
   "params": {
     "courts": "场地数量",
     "rounds": "总场次数",
     "autoRounds": "自动计算",
     "mode": "模式",
+    "modeGroupBase": "基础",
+    "modeGroupGender": "性别",
+    "modeGroupTeam": "队组",
     "modeNormal": "普通",
+    "modeNormalDesc": "均衡上场，随机多样搭档",
+    "modeCoverage": "全覆盖",
+    "modeCoverageDesc": "优先让所有人互相组队和对战一次（可叠加任意模式）",
     "modeMixed": "混双",
+    "modeMixedDesc": "每队 1男1女，人数不足时自动降级",
     "modeRivals": "红蓝对抗",
-    "modeMixedRivals": "混双+红蓝"
+    "modeRivalsDesc": "红队全员 vs 蓝队全员（需为球员分配队组）",
+    "modeMixedRivals": "混双+红蓝",
+    "modeMixedRivalsDesc": "每队同时满足 1男1女 且 1红1蓝",
+    "coverageOption": "全覆盖优先",
+    "seed": "随机种子",
+    "seedHint": "相同种子每次生成结果相同",
+    "advanced": "高级选项",
+    "teamRequired": "请为球员分配红/蓝队组"
   },
   "schedule": {
     "generate": "生成排表",
@@ -52,7 +81,10 @@
     "scoreB": "B队得分",
     "enterScore": "输入得分",
     "save": "保存",
-    "exportPdf": "导出 PDF"
+    "exportPdf": "导出 PDF",
+    "viewStats": "查看统计",
+    "appendLabel": "追加场次",
+    "appendRounds": "追加生成"
   },
   "stats": {
     "player": "球员",
@@ -65,7 +97,9 @@
     "pointsAgainst": "失分",
     "matrixTitle": "两两关系矩阵",
     "together": "同队",
-    "versus": "对战"
+    "versus": "对战",
+    "upToRound": "截至第 {n} 场的统计",
+    "allRounds": "全部场次统计"
   },
   "actions": {
     "confirm": "确认",

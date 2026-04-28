@@ -10,7 +10,11 @@ const pairKey = (a, b) => a < b ? `${a}-${b}` : `${b}-${a}`
  *
  * @returns {Array} rounds — [{ courts:[{teamA:[id,id],teamB:[id,id]}], bench:[id] }]
  */
-export function generateSchedule(players, numCourts, numRounds, mode, constraints) {
+/**
+ * @param {object} [priorState] - { playCount, partnerCount, opponentCount, absenceLeft, roundOffset }
+ *   Pass when appending rounds so fairness continues from existing totals.
+ */
+export function generateSchedule(players, numCourts, numRounds, mode, constraints, seed = 42, coverage = false, priorState = null) {
   // Exclude permanently inactive players
   const pool = players.filter(p => p.status !== 'inactive')
 
@@ -27,11 +31,10 @@ export function generateSchedule(players, numCourts, numRounds, mode, constraint
 
   const byId = Object.fromEntries(pool.map(p => [p.id, p]))
 
-  const partnerCount = {}
-  const opponentCount = {}
+  const partnerCount = priorState ? { ...priorState.partnerCount } : {}
+  const opponentCount = priorState ? { ...priorState.opponentCount } : {}
   const playCount = {}
-
-  pool.forEach(p => { playCount[p.id] = 0 })
+  pool.forEach(p => { playCount[p.id] = priorState?.playCount?.[p.id] ?? 0 })
 
   const getP = k => partnerCount[k] || 0
   const getO = k => opponentCount[k] || 0
@@ -40,9 +43,10 @@ export function generateSchedule(players, numCourts, numRounds, mode, constraint
   function incOpponent(a, b) { const k = pairKey(a, b); opponentCount[k] = (opponentCount[k] || 0) + 1 }
 
   // Absence countdown per player
-  const absenceLeft = {}
-  pool.forEach(p => { absenceLeft[p.id] = p.status === 'absent' ? Math.max(0, p.absenceRounds || 0) : 0 })
+  const absenceLeft = priorState ? { ...priorState.absenceLeft }
+    : Object.fromEntries(pool.map(p => [p.id, p.status === 'absent' ? Math.max(0, p.absenceRounds || 0) : 0]))
 
+  const roundOffset = priorState?.roundOffset ?? 0
   const rounds = []
 
   for (let ri = 0; ri < autoRounds; ri++) {
@@ -54,7 +58,7 @@ export function generateSchedule(players, numCourts, numRounds, mode, constraint
     const active = sorted.slice(0, Math.min(perRound, sorted.length))
     const bench = sorted.slice(active.length) // eligible but benched due to court limit
 
-    const courts = buildCourts(active.map(p => p.id), numCourts, mode, byId, fixed, forbidden, getP, getO, ri)
+    const courts = buildCourts(active.map(p => p.id), numCourts, mode, byId, fixed, forbidden, getP, getO, roundOffset + ri, seed, coverage)
 
     bench.forEach(p => { /* bench count tracked in schedule store */ })
     courts.forEach(c => {
@@ -75,22 +79,23 @@ export function generateSchedule(players, numCourts, numRounds, mode, constraint
 
 // ─── court builders ──────────────────────────────────────────────────────────
 
-function buildCourts(ids, numCourts, mode, byId, fixed, forbidden, getP, getO, ri) {
-  const shuffled = shuffle([...ids], ri * 7919)
-  if (mode === 'mixed') return buildMixed(shuffled, numCourts, byId, fixed, forbidden, getP, getO)
-  if (mode === 'rivals') return buildRivals(shuffled, numCourts, byId, fixed, forbidden, getP, getO)
-  if (mode === 'mixedRivals') return buildMixedRivals(shuffled, numCourts, byId, fixed, forbidden, getP, getO)
-  return buildNormal(shuffled, numCourts, fixed, forbidden, getP, getO)
+function buildCourts(ids, numCourts, mode, byId, fixed, forbidden, getP, getO, ri, seed, coverage = false) {
+  const shuffled = shuffle([...ids], ((seed >>> 0) ^ (ri * 7919)) >>> 0)
+  if (mode === 'mixed') return buildMixed(shuffled, numCourts, byId, fixed, forbidden, getP, getO, coverage)
+  if (mode === 'rivals') return buildRivals(shuffled, numCourts, byId, fixed, forbidden, getP, getO, coverage)
+  if (mode === 'mixedRivals') return buildMixedRivals(shuffled, numCourts, byId, fixed, forbidden, getP, getO, coverage)
+  return buildNormal(shuffled, numCourts, fixed, forbidden, getP, getO, coverage)
 }
 
-/** Normal mode: penalty-based greedy assignment */
-function buildNormal(ids, numCourts, fixed, forbidden, getP, getO) {
+/** Normal / Coverage mode: penalty-based greedy assignment.
+ *  coverage=true uses heavier penalties to maximise unique partnerships and matchups. */
+function buildNormal(ids, numCourts, fixed, forbidden, getP, getO, coverage = false) {
   const used = new Set()
   const courts = []
   for (let ci = 0; ci < numCourts; ci++) {
     const avail = ids.filter(id => !used.has(id))
     if (avail.length < 4) break
-    const c = pickBestCourt(avail, fixed, forbidden, getP, getO)
+    const c = pickBestCourt(avail, fixed, forbidden, getP, getO, coverage)
     c.forEach(id => used.add(id))
     courts.push({ teamA: [c[0], c[1]], teamB: [c[2], c[3]] })
   }
@@ -101,7 +106,7 @@ function buildNormal(ids, numCourts, fixed, forbidden, getP, getO) {
  * Mixed doubles: each team = 1M + 1F.
  * Falls back to same-gender pairs when mixed pool runs out.
  */
-function buildMixed(ids, numCourts, byId, fixed, forbidden, getP, getO) {
+function buildMixed(ids, numCourts, byId, fixed, forbidden, getP, getO, coverage = false) {
   const used = new Set()
   const courts = []
 
@@ -110,15 +115,13 @@ function buildMixed(ids, numCourts, byId, fixed, forbidden, getP, getO) {
     const females = ids.filter(id => !used.has(id) && byId[id]?.gender === 'F')
 
     if (males.length >= 2 && females.length >= 2) {
-      // Pick best (M1+F_a) vs (M2+F_b)
-      const c = pickMixedCourt(males, females, fixed, forbidden, getP, getO)
+      const c = pickMixedCourt(males, females, fixed, forbidden, getP, getO, coverage)
       c.forEach(id => used.add(id))
       courts.push({ teamA: [c[0], c[1]], teamB: [c[2], c[3]] })
     } else {
-      // Fall back: assign remaining eligible players normally
       const avail = ids.filter(id => !used.has(id))
       if (avail.length < 4) break
-      const c = pickBestCourt(avail, fixed, forbidden, getP, getO)
+      const c = pickBestCourt(avail, fixed, forbidden, getP, getO, coverage)
       c.forEach(id => used.add(id))
       courts.push({ teamA: [c[0], c[1]], teamB: [c[2], c[3]] })
     }
@@ -130,7 +133,7 @@ function buildMixed(ids, numCourts, byId, fixed, forbidden, getP, getO) {
  * Rivals mode: same team stays together (red vs blue).
  * Falls back to normal when one colour runs out.
  */
-function buildRivals(ids, numCourts, byId, fixed, forbidden, getP, getO) {
+function buildRivals(ids, numCourts, byId, fixed, forbidden, getP, getO, coverage = false) {
   const used = new Set()
   const courts = []
 
@@ -139,13 +142,13 @@ function buildRivals(ids, numCourts, byId, fixed, forbidden, getP, getO) {
     const blues = ids.filter(id => !used.has(id) && byId[id]?.team === 'blue')
 
     if (reds.length >= 2 && blues.length >= 2) {
-      const c = pickRivalCourt(reds, blues, fixed, forbidden, getP, getO)
+      const c = pickRivalCourt(reds, blues, fixed, forbidden, getP, getO, coverage)
       c.forEach(id => used.add(id))
       courts.push({ teamA: [c[0], c[1]], teamB: [c[2], c[3]] })
     } else {
       const avail = ids.filter(id => !used.has(id))
       if (avail.length < 4) break
-      const c = pickBestCourt(avail, fixed, forbidden, getP, getO)
+      const c = pickBestCourt(avail, fixed, forbidden, getP, getO, coverage)
       c.forEach(id => used.add(id))
       courts.push({ teamA: [c[0], c[1]], teamB: [c[2], c[3]] })
     }
@@ -157,7 +160,7 @@ function buildRivals(ids, numCourts, byId, fixed, forbidden, getP, getO) {
  * Mixed+Rivals: each team = 1red + 1blue AND 1M + 1F.
  * Falls back progressively to mixed-only, then normal.
  */
-function buildMixedRivals(ids, numCourts, byId, fixed, forbidden, getP, getO) {
+function buildMixedRivals(ids, numCourts, byId, fixed, forbidden, getP, getO, coverage = false) {
   const used = new Set()
   const courts = []
 
@@ -170,22 +173,20 @@ function buildMixedRivals(ids, numCourts, byId, fixed, forbidden, getP, getO) {
     const blueF = av({ team: 'blue', gender: 'F' })
 
     if (redM.length >= 1 && blueF.length >= 1 && blueM.length >= 1 && redF.length >= 1) {
-      // Full constraint: teamA=[redM,blueF] vs teamB=[blueM,redF] (or swapped)
-      const c = pickMixedRivalsCourt(redM, redF, blueM, blueF, fixed, forbidden, getP, getO)
+      const c = pickMixedRivalsCourt(redM, redF, blueM, blueF, fixed, forbidden, getP, getO, coverage)
       c.forEach(id => used.add(id))
       courts.push({ teamA: [c[0], c[1]], teamB: [c[2], c[3]] })
     } else {
-      // Fall back to mixed doubles
       const males = ids.filter(id => !used.has(id) && byId[id]?.gender === 'M')
       const females = ids.filter(id => !used.has(id) && byId[id]?.gender === 'F')
       if (males.length >= 2 && females.length >= 2) {
-        const c = pickMixedCourt(males, females, fixed, forbidden, getP, getO)
+        const c = pickMixedCourt(males, females, fixed, forbidden, getP, getO, coverage)
         c.forEach(id => used.add(id))
         courts.push({ teamA: [c[0], c[1]], teamB: [c[2], c[3]] })
       } else {
         const avail = ids.filter(id => !used.has(id))
         if (avail.length < 4) break
-        const c = pickBestCourt(avail, fixed, forbidden, getP, getO)
+        const c = pickBestCourt(avail, fixed, forbidden, getP, getO, coverage)
         c.forEach(id => used.add(id))
         courts.push({ teamA: [c[0], c[1]], teamB: [c[2], c[3]] })
       }
@@ -196,8 +197,15 @@ function buildMixedRivals(ids, numCourts, byId, fixed, forbidden, getP, getO) {
 
 // ─── low-level court pickers ─────────────────────────────────────────────────
 
-/** Returns [a1, a2, b1, b2] with minimal partner/opponent repeat penalty. */
-function pickBestCourt(available, fixed, forbidden, getP, getO) {
+/** Returns [a1, a2, b1, b2] with minimal partner/opponent repeat penalty.
+ *  coverage=true boosts partner weight to 50 and opponent weight to 20,
+ *  so the algorithm strongly prefers pairs that haven't played together/against each other yet.
+ *  Fixed-partner constraint always overrides by applying a large negative bonus. */
+function pickBestCourt(available, fixed, forbidden, getP, getO, coverage = false) {
+  const pW = coverage ? 50 : 10  // partner repeat weight
+  const oW = coverage ? 20 : 3   // opponent repeat weight
+  const fixedBonus = 20          // fixed-partner constraint reward (always applies)
+
   const cands = available.slice(0, Math.min(available.length, 12))
   let bestScore = Infinity, best = null
 
@@ -206,7 +214,7 @@ function pickBestCourt(available, fixed, forbidden, getP, getO) {
       const a1 = cands[i], a2 = cands[j]
       const kA = pairKey(a1, a2)
       if (forbidden.has(kA)) continue
-      const sA = getP(kA) * 10 - (fixed.has(kA) ? 20 : 0)
+      const sA = getP(kA) * pW - (fixed.has(kA) ? fixedBonus : 0)
 
       for (let k = 0; k < cands.length - 1; k++) {
         if (k === i || k === j) continue
@@ -215,10 +223,10 @@ function pickBestCourt(available, fixed, forbidden, getP, getO) {
           const b1 = cands[k], b2 = cands[l]
           const kB = pairKey(b1, b2)
           if (forbidden.has(kB)) continue
-          const sB = getP(kB) * 10 - (fixed.has(kB) ? 20 : 0)
+          const sB = getP(kB) * pW - (fixed.has(kB) ? fixedBonus : 0)
           const sOpp = getO(pairKey(a1, b1)) + getO(pairKey(a1, b2)) +
                        getO(pairKey(a2, b1)) + getO(pairKey(a2, b2))
-          const score = sA + sB + sOpp * 3
+          const score = sA + sB + sOpp * oW
           if (score < bestScore) { bestScore = score; best = [a1, a2, b1, b2] }
         }
       }
@@ -228,7 +236,9 @@ function pickBestCourt(available, fixed, forbidden, getP, getO) {
 }
 
 /** Returns [a1, a2, b1, b2] where a1,a2 are red and b1,b2 are blue. */
-function pickRivalCourt(reds, blues, fixed, forbidden, getP, getO) {
+function pickRivalCourt(reds, blues, fixed, forbidden, getP, getO, coverage = false) {
+  const pW = coverage ? 50 : 10
+  const oW = coverage ? 20 : 3
   const rc = reds.slice(0, 6), bc = blues.slice(0, 6)
   let bestScore = Infinity, best = null
 
@@ -237,16 +247,16 @@ function pickRivalCourt(reds, blues, fixed, forbidden, getP, getO) {
       const r1 = rc[i], r2 = rc[j]
       const kR = pairKey(r1, r2)
       if (forbidden.has(kR)) continue
-      const sR = getP(kR) * 10 - (fixed.has(kR) ? 20 : 0)
+      const sR = getP(kR) * pW - (fixed.has(kR) ? 20 : 0)
 
       for (let k = 0; k < bc.length - 1; k++) {
         for (let l = k + 1; l < bc.length; l++) {
           const b1 = bc[k], b2 = bc[l]
           const kB = pairKey(b1, b2)
           if (forbidden.has(kB)) continue
-          const sB = getP(kB) * 10 - (fixed.has(kB) ? 20 : 0)
+          const sB = getP(kB) * pW - (fixed.has(kB) ? 20 : 0)
           const sOpp = getO(pairKey(r1,b1))+getO(pairKey(r1,b2))+getO(pairKey(r2,b1))+getO(pairKey(r2,b2))
-          const score = sR + sB + sOpp * 3
+          const score = sR + sB + sOpp * oW
           if (score < bestScore) { bestScore = score; best = [r1, r2, b1, b2] }
         }
       }
@@ -259,7 +269,9 @@ function pickRivalCourt(reds, blues, fixed, forbidden, getP, getO) {
  * Returns [teamA_m, teamA_f, teamB_m, teamB_f].
  * Tries both male-female pairing options and picks lower penalty.
  */
-function pickMixedCourt(males, females, fixed, forbidden, getP, getO) {
+function pickMixedCourt(males, females, fixed, forbidden, getP, getO, coverage = false) {
+  const pW = coverage ? 50 : 10
+  const oW = coverage ? 20 : 3
   const mc = males.slice(0, 6), fc = females.slice(0, 6)
   let bestScore = Infinity, best = null
 
@@ -269,14 +281,13 @@ function pickMixedCourt(males, females, fixed, forbidden, getP, getO) {
       for (let k = 0; k < fc.length - 1; k++) {
         for (let l = k + 1; l < fc.length; l++) {
           const f1 = fc[k], f2 = fc[l]
-          // Try (m1+f1) vs (m2+f2) and (m1+f2) vs (m2+f1)
           for (const [ta1, ta2, tb1, tb2] of [[m1,f1,m2,f2],[m1,f2,m2,f1]]) {
             const kA = pairKey(ta1, ta2), kB = pairKey(tb1, tb2)
             if (forbidden.has(kA) || forbidden.has(kB)) continue
-            const sA = getP(kA)*10 - (fixed.has(kA)?20:0)
-            const sB = getP(kB)*10 - (fixed.has(kB)?20:0)
+            const sA = getP(kA)*pW - (fixed.has(kA)?20:0)
+            const sB = getP(kB)*pW - (fixed.has(kB)?20:0)
             const sOpp = getO(pairKey(ta1,tb1))+getO(pairKey(ta1,tb2))+getO(pairKey(ta2,tb1))+getO(pairKey(ta2,tb2))
-            const score = sA + sB + sOpp * 3
+            const score = sA + sB + sOpp * oW
             if (score < bestScore) { bestScore = score; best = [ta1, ta2, tb1, tb2] }
           }
         }
@@ -290,23 +301,56 @@ function pickMixedCourt(males, females, fixed, forbidden, getP, getO) {
  * Returns [ta1, ta2, tb1, tb2] where each team = 1red+1blue AND 1M+1F.
  * teamA=[redM,blueF] vs teamB=[blueM,redF]  OR  teamA=[redF,blueM] vs teamB=[blueF,redM]
  */
-function pickMixedRivalsCourt(redM, redF, blueM, blueF, fixed, forbidden, getP, getO) {
+function pickMixedRivalsCourt(redM, redF, blueM, blueF, fixed, forbidden, getP, getO, coverage = false) {
+  const pW = coverage ? 50 : 10
+  const oW = coverage ? 20 : 3
   const rmC = redM.slice(0,4), rfC = redF.slice(0,4), bmC = blueM.slice(0,4), bfC = blueF.slice(0,4)
   let bestScore = Infinity, best = null
 
   for (const rm of rmC) for (const bf of bfC) for (const bm of bmC) for (const rf of rfC) {
-    if ([rm,bf,bm,rf].some((x,i,a)=>a.indexOf(x)!==i)) continue // duplicate id guard
+    if ([rm,bf,bm,rf].some((x,i,a)=>a.indexOf(x)!==i)) continue
     for (const [ta1,ta2,tb1,tb2] of [[rm,bf,bm,rf],[bm,rf,rm,bf]]) {
       const kA = pairKey(ta1,ta2), kB = pairKey(tb1,tb2)
       if (forbidden.has(kA)||forbidden.has(kB)) continue
-      const sA = getP(kA)*10-(fixed.has(kA)?20:0)
-      const sB = getP(kB)*10-(fixed.has(kB)?20:0)
+      const sA = getP(kA)*pW-(fixed.has(kA)?20:0)
+      const sB = getP(kB)*pW-(fixed.has(kB)?20:0)
       const sOpp = getO(pairKey(ta1,tb1))+getO(pairKey(ta1,tb2))+getO(pairKey(ta2,tb1))+getO(pairKey(ta2,tb2))
-      const score = sA+sB+sOpp*3
+      const score = sA+sB+sOpp*oW
       if (score < bestScore) { bestScore = score; best = [ta1,ta2,tb1,tb2] }
     }
   }
   return best ?? [redM[0], blueF[0], blueM[0], redF[0]]
+}
+
+/**
+ * Derive priorState from existing rounds so append-generate continues fairly.
+ */
+export function extractPriorState(rounds, players) {
+  const playCount = {}
+  const partnerCount = {}
+  const opponentCount = {}
+  players.forEach(p => { playCount[p.id] = 0 })
+
+  rounds.forEach(round => {
+    round.bench.forEach(id => { /* bench doesn't count as played */ })
+    round.courts.forEach(court => {
+      const [a1, a2] = court.teamA
+      const [b1, b2] = court.teamB
+      ;[a1, a2, b1, b2].forEach(id => { playCount[id] = (playCount[id] || 0) + 1 })
+      const pk = (x, y) => x < y ? `${x}-${y}` : `${y}-${x}`
+      partnerCount[pk(a1,a2)] = (partnerCount[pk(a1,a2)] || 0) + 1
+      partnerCount[pk(b1,b2)] = (partnerCount[pk(b1,b2)] || 0) + 1
+      ;[a1,a2].forEach(a => [b1,b2].forEach(b => {
+        opponentCount[pk(a,b)] = (opponentCount[pk(a,b)] || 0) + 1
+      }))
+    })
+  })
+
+  // Reconstruct absenceLeft: start from player config, tick down once per round
+  const absenceLeft = {}
+  players.forEach(p => { absenceLeft[p.id] = p.status === 'absent' ? Math.max(0, p.absenceRounds || 0) : 0 })
+
+  return { playCount, partnerCount, opponentCount, absenceLeft, roundOffset: rounds.length }
 }
 
 // Fisher-Yates shuffle with LCG seeded RNG for deterministic variation per round

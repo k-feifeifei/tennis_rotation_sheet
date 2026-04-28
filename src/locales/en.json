@@ -1,10 +1,23 @@
 {
   "appTitle": "Tennis Rotation",
   "nav": {
-    "players": "Players",
-    "params": "Settings",
+    "players": "Players & Settings",
     "schedule": "Schedule",
-    "stats": "Statistics"
+    "stats": "Statistics",
+    "setup": "Setup"
+  },
+  "home": {
+    "subtitle": "Tennis doubles rotation scheduler",
+    "newSession": "New session",
+    "history": "Past sessions",
+    "backToHome": "Back to home",
+    "playerCount": "{n} players",
+    "roundCount": "{n} rounds"
+  },
+  "roundOptions": {
+    "title": "Round options",
+    "regenHint": "Changes below will regenerate rounds from round {n} onward (earlier rounds are kept).",
+    "regenerateFrom": "Regenerate from here"
   },
   "player": {
     "count": "Player count",
@@ -29,17 +42,33 @@
     "statusAbsent": "Temp absent",
     "statusInactive": "Withdrawn",
     "absenceRounds": "Skip rounds",
-    "statusHint": "Click to change status"
+    "statusHint": "Click to change status",
+    "attendanceTitle": "Attendance",
+    "attendanceHint": "Mark players who are sitting out"
   },
   "params": {
     "courts": "Courts",
     "rounds": "Total rounds",
     "autoRounds": "Auto",
     "mode": "Mode",
+    "modeGroupBase": "Base",
+    "modeGroupGender": "Gender",
+    "modeGroupTeam": "Team",
     "modeNormal": "Normal",
+    "modeNormalDesc": "Balanced play time, varied partners",
+    "modeCoverage": "Full coverage",
+    "modeCoverageDesc": "Prioritise unique pairings and matchups first (combinable with any mode)",
     "modeMixed": "Mixed doubles",
+    "modeMixedDesc": "Each team 1M+1F; falls back when unavailable",
     "modeRivals": "Red-Blue rivals",
-    "modeMixedRivals": "Mixed + Rivals"
+    "modeRivalsDesc": "All-red vs all-blue teams (assign team colours first)",
+    "modeMixedRivals": "Mixed + Rivals",
+    "modeMixedRivalsDesc": "Each team is 1M+1F and 1Red+1Blue simultaneously",
+    "coverageOption": "Full coverage priority",
+    "seed": "Random seed",
+    "seedHint": "Same seed always produces the same schedule",
+    "advanced": "Advanced",
+    "teamRequired": "Assign Red/Blue teams to players first"
   },
   "schedule": {
     "generate": "Generate",
@@ -52,7 +81,10 @@
     "scoreB": "Team B score",
     "enterScore": "Enter score",
     "save": "Save",
-    "exportPdf": "Export PDF"
+    "exportPdf": "Export PDF",
+    "viewStats": "View stats",
+    "appendLabel": "Add rounds",
+    "appendRounds": "Append"
   },
   "stats": {
     "player": "Player",
@@ -65,7 +97,9 @@
     "pointsAgainst": "PA",
     "matrixTitle": "Pairwise Matrix",
     "together": "Together",
-    "versus": "Versus"
+    "versus": "Versus",
+    "upToRound": "Stats up to round {n}",
+    "allRounds": "All rounds"
   },
   "actions": {
     "confirm": "Confirm",
