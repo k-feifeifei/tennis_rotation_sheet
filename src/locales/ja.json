@@ -1,0 +1,83 @@
+{
+  "appTitle": "テニスローテーション",
+  "nav": {
+    "players": "プレイヤー設定",
+    "params": "基本パラメータ",
+    "schedule": "スケジュール",
+    "stats": "統計"
+  },
+  "player": {
+    "count": "プレイヤー数",
+    "name": "名前",
+    "gender": "性別",
+    "team": "チーム",
+    "genderMale": "男性",
+    "genderFemale": "女性",
+    "teamRed": "赤チーム",
+    "teamBlue": "青チーム",
+    "teamNone": "なし",
+    "addPlayer": "プレイヤー追加",
+    "removePlayer": "削除",
+    "bulkInput": "名前を一括入力（1行1名）",
+    "applyNames": "適用",
+    "fixedPartner": "固定パートナー",
+    "forbidPartner": "禁止パートナー",
+    "addConstraint": "制約を追加",
+    "constraintConflict": "競合：同じペアを固定と禁止の両方に設定できません",
+    "player": "プレイヤー",
+    "statusActive": "参加中",
+    "statusAbsent": "一時欠席",
+    "statusInactive": "永久脱退",
+    "absenceRounds": "スキップ試合数",
+    "statusHint": "クリックしてステータス変更"
+  },
+  "params": {
+    "courts": "コート数",
+    "rounds": "総試合数",
+    "autoRounds": "自動計算",
+    "mode": "モード",
+    "modeNormal": "通常",
+    "modeMixed": "ミックスダブルス",
+    "modeRivals": "赤青対抗",
+    "modeMixedRivals": "ミックス+対抗"
+  },
+  "schedule": {
+    "generate": "生成",
+    "regenerate": "再生成",
+    "round": "第{n}試合",
+    "court": "コート{n}",
+    "vs": "VS",
+    "bench": "待機",
+    "scoreA": "Aチーム得点",
+    "scoreB": "Bチーム得点",
+    "enterScore": "得点入力",
+    "save": "保存",
+    "exportPdf": "PDF出力"
+  },
+  "stats": {
+    "player": "プレイヤー",
+    "played": "出場",
+    "benched": "待機",
+    "wins": "勝",
+    "losses": "敗",
+    "winRate": "勝率",
+    "pointsFor": "得点",
+    "pointsAgainst": "失点",
+    "matrixTitle": "ペア関係マトリクス",
+    "together": "同組",
+    "versus": "対戦"
+  },
+  "actions": {
+    "confirm": "確認",
+    "cancel": "キャンセル",
+    "reset": "リセット",
+    "save": "保存",
+    "next": "次へ",
+    "back": "戻る"
+  },
+  "errors": {
+    "minPlayers": "最低4名のプレイヤーが必要です",
+    "maxPlayers": "最大50名まで",
+    "notEnoughForMode": "ミックスダブルスには男女各2名以上が必要です"
+  }
+}

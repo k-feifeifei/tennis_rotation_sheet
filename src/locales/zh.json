@@ -1,0 +1,83 @@
+{
+  "appTitle": "网球对战排表",
+  "nav": {
+    "players": "球员配置",
+    "params": "基本参数",
+    "schedule": "排表结果",
+    "stats": "统计视图"
+  },
+  "player": {
+    "count": "球员人数",
+    "name": "姓名",
+    "gender": "性别",
+    "team": "队组",
+    "genderMale": "男",
+    "genderFemale": "女",
+    "teamRed": "红队",
+    "teamBlue": "蓝队",
+    "teamNone": "无",
+    "addPlayer": "添加球员",
+    "removePlayer": "删除",
+    "bulkInput": "批量输入姓名（每行一个）",
+    "applyNames": "应用",
+    "fixedPartner": "固定搭档",
+    "forbidPartner": "禁止搭档",
+    "addConstraint": "添加约束",
+    "constraintConflict": "约束冲突：固定搭档与禁止搭档不能同时选择同一对球员",
+    "player": "球员",
+    "statusActive": "正常",
+    "statusAbsent": "临时退出",
+    "statusInactive": "永久退出",
+    "absenceRounds": "跳过场数",
+    "statusHint": "点击切换状态"
+  },
+  "params": {
+    "courts": "场地数量",
+    "rounds": "总场次数",
+    "autoRounds": "自动计算",
+    "mode": "模式",
+    "modeNormal": "普通",
+    "modeMixed": "混双",
+    "modeRivals": "红蓝对抗",
+    "modeMixedRivals": "混双+红蓝"
+  },
+  "schedule": {
+    "generate": "生成排表",
+    "regenerate": "重新生成",
+    "round": "第 {n} 场",
+    "court": "场地 {n}",
+    "vs": "VS",
+    "bench": "候场",
+    "scoreA": "A队得分",
+    "scoreB": "B队得分",
+    "enterScore": "输入得分",
+    "save": "保存",
+    "exportPdf": "导出 PDF"
+  },
+  "stats": {
+    "player": "球员",
+    "played": "上场",
+    "benched": "候场",
+    "wins": "胜",
+    "losses": "负",
+    "winRate": "胜率",
+    "pointsFor": "得分",
+    "pointsAgainst": "失分",
+    "matrixTitle": "两两关系矩阵",
+    "together": "同队",
+    "versus": "对战"
+  },
+  "actions": {
+    "confirm": "确认",
+    "cancel": "取消",
+    "reset": "重置",
+    "save": "保存",
+    "next": "下一步",
+    "back": "返回"
+  },
+  "errors": {
+    "minPlayers": "至少需要 4 名球员",
+    "maxPlayers": "最多支持 50 名球员",
+    "notEnoughForMode": "混双模式需要至少 2 男 2 女"
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "appTitle": "Tennis Rotation",
+  "nav": {
+    "players": "Players",
+    "params": "Settings",
+    "schedule": "Schedule",
+    "stats": "Statistics"
+  },
+  "player": {
+    "count": "Player count",
+    "name": "Name",
+    "gender": "Gender",
+    "team": "Team",
+    "genderMale": "Male",
+    "genderFemale": "Female",
+    "teamRed": "Red",
+    "teamBlue": "Blue",
+    "teamNone": "None",
+    "addPlayer": "Add player",
+    "removePlayer": "Remove",
+    "bulkInput": "Bulk enter names (one per line)",
+    "applyNames": "Apply",
+    "fixedPartner": "Fixed partner",
+    "forbidPartner": "Forbidden partner",
+    "addConstraint": "Add constraint",
+    "constraintConflict": "Conflict: the same pair cannot be both fixed and forbidden partners",
+    "player": "Player",
+    "statusActive": "Active",
+    "statusAbsent": "Temp absent",
+    "statusInactive": "Withdrawn",
+    "absenceRounds": "Skip rounds",
+    "statusHint": "Click to change status"
+  },
+  "params": {
+    "courts": "Courts",
+    "rounds": "Total rounds",
+    "autoRounds": "Auto",
+    "mode": "Mode",
+    "modeNormal": "Normal",
+    "modeMixed": "Mixed doubles",
+    "modeRivals": "Red-Blue rivals",
+    "modeMixedRivals": "Mixed + Rivals"
+  },
+  "schedule": {
+    "generate": "Generate",
+    "regenerate": "Regenerate",
+    "round": "Round {n}",
+    "court": "Court {n}",
+    "vs": "VS",
+    "bench": "Bench",
+    "scoreA": "Team A score",
+    "scoreB": "Team B score",
+    "enterScore": "Enter score",
+    "save": "Save",
+    "exportPdf": "Export PDF"
+  },
+  "stats": {
+    "player": "Player",
+    "played": "Played",
+    "benched": "Benched",
+    "wins": "Wins",
+    "losses": "Losses",
+    "winRate": "Win%",
+    "pointsFor": "PF",
+    "pointsAgainst": "PA",
+    "matrixTitle": "Pairwise Matrix",
+    "together": "Together",
+    "versus": "Versus"
+  },
+  "actions": {
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "reset": "Reset",
+    "save": "Save",
+    "next": "Next",
+    "back": "Back"
+  },
+  "errors": {
+    "minPlayers": "At least 4 players required",
+    "maxPlayers": "Maximum 50 players",
+    "notEnoughForMode": "Mixed doubles requires at least 2 male and 2 female players"
+  }
+}
